@@ -1,4 +1,4 @@
-const CACHE_NAME = 'oscar-v6.4.8-full-offline-local-first';
+const CACHE_NAME = 'oscar-v6.4.9-cashier-customer-search';
 const PRECACHE = [
   './',
   'index.html',

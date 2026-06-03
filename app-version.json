@@ -1,5 +1,5 @@
 {
-  "version": "6.4.8-full-offline-local-first",
+  "version": "6.4.9-cashier-customer-search",
   "date": "2026-06-03",
-  "notes": "Local-first offline mode: every add/edit/delete/payment/expense/customer operation is saved and rendered locally first, then synced automatically when internet returns."
+  "notes": "Cashier customer field is now empty by default, searches from the first character, shows name, phone and debt, supports spaces, and creates a new customer locally if no match exists."
 }
