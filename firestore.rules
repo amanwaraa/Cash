@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function sameCompany(companyKey) { return signedIn() && request.auth.token.companyKey == companyKey; }
+    function isAdmin() { return signedIn() && request.auth.token.role == 'admin'; }
+    function hasPerm(p) { return isAdmin() || (signedIn() && request.auth.token.permissions[p] == true); }
+
+    match /companies/{companyKey} {
+      allow read: if sameCompany(companyKey);
+      allow write: if sameCompany(companyKey) && hasPerm('manageSettings');
+
+      match /admin/{docId} {
+        allow read, write: if sameCompany(companyKey) && isAdmin();
+      }
+      match /employees/{employeeId} {
+        allow read: if sameCompany(companyKey) && hasPerm('manageEmployees');
+        allow write, delete: if sameCompany(companyKey) && hasPerm('manageEmployees');
+      }
+      match /data/products/{docId} {
+        allow read: if sameCompany(companyKey) && hasPerm('viewProducts');
+        allow create: if sameCompany(companyKey) && hasPerm('addProducts');
+        allow update: if sameCompany(companyKey) && (hasPerm('editProducts') || hasPerm('addSales'));
+        allow delete: if sameCompany(companyKey) && hasPerm('deleteProducts');
+      }
+      match /data/invoices/{docId} {
+        allow read: if sameCompany(companyKey) && hasPerm('viewSales');
+        allow create: if sameCompany(companyKey) && hasPerm('addSales');
+        allow update: if sameCompany(companyKey) && hasPerm('editSales');
+        allow delete: if sameCompany(companyKey) && hasPerm('deleteSales');
+      }
+      match /data/customers/{docId} {
+        allow read, write: if sameCompany(companyKey) && hasPerm('viewCustomers');
+      }
+      match /data/accounts/{docId} {
+        allow read, write: if sameCompany(companyKey) && hasPerm('manageAccounts');
+      }
+      match /data/suppliers/{docId} {
+        allow read, write: if sameCompany(companyKey) && hasPerm('manageSuppliers');
+      }
+      match /data/expenses/{docId} {
+        allow read, write: if sameCompany(companyKey) && hasPerm('manageExpenses');
+      }
+      match /data/settings/{docId} {
+        allow read: if sameCompany(companyKey);
+        allow write: if sameCompany(companyKey) && hasPerm('manageSettings');
+      }
+      match /data/{collection}/{docId} {
+        allow read, write: if sameCompany(companyKey);
+      }
+    }
+  }
+}
