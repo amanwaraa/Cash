@@ -1,55 +1,115 @@
-const CACHE_NAME = 'oscar-v6.4.6-admin-company-keys';
+const CACHE_NAME = 'oscar-v6.4.8-full-offline-local-first';
 const PRECACHE = [
-  "./",
-  "index.html",
-  "dashboard.html",
-  "cashier.html",
-  "customers.html",
-  "accounts.html",
-  "suppliers.html",
-  "products.html",
-  "invoices.html",
-  "expenses.html",
-  "inventory.html",
-  "finance.html",
-  "analytics.html",
-  "notifications.html",
-  "mobile-scanner.html",
-  "manifest.json",
-  "sw.js",
-  "README.md",
-  "DATABASE_STRUCTURE.md",
-  "firestore.rules",
-  "database.rules.json",
-  "employees.html",
-  "settings.html",
-  "login.html",
-  "admin.html",
-  "icon-192.png",
-  "icon-512.png",
-  "app-version.json",
-  "offline-update.js",
-  "firestore.secure.rules"
+  './',
+  'index.html',
+  'login.html',
+  'dashboard.html',
+  'cashier.html',
+  'customers.html',
+  'accounts.html',
+  'suppliers.html',
+  'products.html',
+  'invoices.html',
+  'expenses.html',
+  'inventory.html',
+  'finance.html',
+  'analytics.html',
+  'notifications.html',
+  'mobile-scanner.html',
+  'employees.html',
+  'settings.html',
+  'admin.html',
+  'manifest.json',
+  'sw.js',
+  'README.md',
+  'DATABASE_STRUCTURE.md',
+  'firestore.rules',
+  'database.rules.json',
+  'firestore.secure.rules',
+  'icon-192.png',
+  'icon-512.png',
+  'app-version.json',
+  'offline-update.js',
+  'local-bridge.js'
 ];
+
+async function cacheOne(cache, url) {
+  try {
+    const req = new Request(url, {cache:'reload'});
+    const res = await fetch(req);
+    if(res && res.ok) await cache.put(req, res.clone());
+  } catch(e) {}
+}
+
 self.addEventListener('install', event => {
   self.skipWaiting();
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE.map(u => new Request(u, {cache:'reload'}))).catch(()=>null));
+  event.waitUntil((async()=>{
+    const cache = await caches.open(CACHE_NAME);
+    await Promise.allSettled(PRECACHE.map(u => cacheOne(cache, u)));
+  })());
 });
+
 self.addEventListener('activate', event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))).then(()=>self.clients.claim()));
+  event.waitUntil((async()=>{
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
+    await self.clients.claim();
+  })());
 });
+
+async function cached(req) {
+  return await caches.match(req, {ignoreSearch:true}) || await caches.match('./index.html', {ignoreSearch:true});
+}
+
+async function putFresh(req) {
+  const res = await fetch(req, {cache:'no-store'});
+  if(res && res.ok) {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(req, res.clone());
+  }
+  return res;
+}
+
 self.addEventListener('fetch', event => {
   const req = event.request;
   if(req.method !== 'GET') return;
   const url = new URL(req.url);
-  // لا نلمس Firebase أو أي طلب خارجي؛ هذا كان يسبب كاش ونتائج مزامنة قديمة/فاشلة.
-  if(url.origin !== self.location.origin) {
-    event.respondWith(fetch(req, {cache:'no-store'}));
+
+  // لا نلمس Firebase أو أي طلب خارجي حتى لا تتأثر المزامنة.
+  if(url.origin !== self.location.origin) return;
+
+  const isNavigation = req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html');
+  const isAppVersion = url.pathname.endsWith('/app-version.json');
+
+  if(isNavigation) {
+    event.respondWith((async()=>{
+      const hit = await caches.match(req, {ignoreSearch:true});
+      if(hit) {
+        event.waitUntil(putFresh(req).catch(()=>null));
+        return hit;
+      }
+      try { return await putFresh(req); }
+      catch(e) { return await cached(req); }
+    })());
     return;
   }
-  if(url.pathname.endsWith('/app-version.json') || url.pathname.endsWith('.html') || url.pathname.endsWith('.js') || url.pathname.endsWith('.json')) {
-    event.respondWith(fetch(req, {cache:'reload'}).then(res => { const copy=res.clone(); caches.open(CACHE_NAME).then(c=>c.put(req,copy)); return res; }).catch(()=>caches.match(req).then(r=>r || caches.match('./index.html'))));
+
+  if(isAppVersion) {
+    event.respondWith(putFresh(req).catch(()=>caches.match(req, {ignoreSearch:true})));
     return;
   }
-  event.respondWith(caches.match(req).then(cached => cached || fetch(req).then(res => { const copy=res.clone(); caches.open(CACHE_NAME).then(c=>c.put(req,copy)); return res; }).catch(()=>caches.match('./index.html'))));
+
+  event.respondWith((async()=>{
+    const hit = await caches.match(req, {ignoreSearch:true});
+    if(hit) {
+      event.waitUntil(putFresh(req).catch(()=>null));
+      return hit;
+    }
+    try { return await putFresh(req); }
+    catch(e) { return await cached(req); }
+  })());
+});
+
+self.addEventListener('message', event => {
+  if(event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });

@@ -1,5 +1,5 @@
 {
-  "version": "6.4.6-admin-company-keys",
-  "updatedAt": "2026-06-03T00:00:00.000Z",
-  "notes": "إضافة صفحة أدمن لإنشاء مفاتيح دخول مختلفة لكل شركة وربطها بتسجيل الدخول."
+  "version": "6.4.8-full-offline-local-first",
+  "date": "2026-06-03",
+  "notes": "Local-first offline mode: every add/edit/delete/payment/expense/customer operation is saved and rendered locally first, then synced automatically when internet returns."
 }

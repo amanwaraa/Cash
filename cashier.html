@@ -134,7 +134,16 @@ const App = (() => {
     if(state.store.settings && state.store.settings[0] && state.store.settings[0].autoPrintInvoice===undefined) state.store.settings[0].autoPrintInvoice=false;
     saveStore(false);
   }
-  function saveStore(render=true){localStorage.setItem(storeKey(), JSON.stringify(state.store)); if(render) scheduleRender();}
+  function saveStore(render=true){
+    try{
+      localStorage.setItem(storeKey(), JSON.stringify(state.store));
+      localStorage.setItem(storeKey()+'_lastSaved', String(Date.now()));
+    }catch(e){
+      console.error('local save failed', e);
+      try{ toast('خطأ: تعذر الحفظ المحلي. قد تكون مساحة التخزين ممتلئة.','bad'); }catch(_e){}
+    }
+    if(render) scheduleRender();
+  }
   let renderTimer=null;
   function isTypingOrEditing(){
     const el=document.activeElement;
@@ -225,13 +234,14 @@ const App = (() => {
     item.id=String(item.id);
     if(state.store._deleted?.[collectionName]) delete state.store._deleted[collectionName][item.id];
     const arr=coll(collectionName); const i=arr.findIndex(x=>String(x.id)===item.id);
-    const stamped={...item,createdAt:item.createdAt||Date.now(),updatedAt:Date.now()};
+    const stamped={...item,createdAt:item.createdAt||Date.now(),updatedAt:Date.now(),_localTs:Date.now()};
     if(i>=0) arr[i]={...arr[i],...stamped}; else arr.unshift(stamped);
+    return stamped;
   }
   function markDeleted(collectionName,id){ if(!state.store._deleted) state.store._deleted={}; if(!state.store._deleted[collectionName]) state.store._deleted[collectionName]={}; state.store._deleted[collectionName][String(id)]=Date.now(); }
   function removeLocal(collectionName, id){markDeleted(collectionName,id); state.store[collectionName]=coll(collectionName).filter(x=>String(x.id)!==String(id))}
-  function setItem(collectionName, item, activityText=''){ if(!item.id) item.id=uid(collectionName.slice(0,3)); upsertLocal(collectionName,item); queue('set',collectionName,item.id,item,false); if(activityText) logActivity(activityText,'set',{collectionName,id:item.id}); saveStore(); autoSync(); return item; }
-  function deleteItem(collectionName,id,activityText=''){ removeLocal(collectionName,id); queue('delete',collectionName,id,null,false); if(activityText) logActivity(activityText,'delete',{collectionName,id}); saveStore(); autoSync(); }
+  function setItem(collectionName, item, activityText=''){ if(!item.id) item.id=uid(collectionName.slice(0,3)); const saved=upsertLocal(collectionName,item); queue('set',collectionName,saved.id,saved,false); if(activityText) logActivity(activityText,'set',{collectionName,id:saved.id}); saveStore(); autoSync(); return saved; }
+  function deleteItem(collectionName,id,activityText=''){ removeLocal(collectionName,id); queue('delete',collectionName,id,null,false); if(activityText) logActivity(activityText,'delete',{collectionName,id}); saveStore(); autoSync(); return true; }
   function normalizeItemForRemote(item){
     const out={...(item||{})};
     if(!out.id && item?.id!==0) return null;
@@ -288,7 +298,7 @@ const App = (() => {
     if(state.firebaseReady && firebaseConfig.databaseURL && !forceProbe) return true;
     const trustedDbUrl = localStorage.getItem('oscarDbUrl_'+firebaseConfig.projectId) || firebaseConfig.databaseURL;
     if(trustedDbUrl && !forceProbe){ firebaseConfig.databaseURL=String(trustedDbUrl).replace(/\/+$/,''); state.firebaseReady=true; state.syncError=''; return true; }
-    if(!navigator.onLine){state.syncError='لا يوجد اتصال بالإنترنت'; state.firebaseReady=false; return false;}
+    if(!navigator.onLine){state.syncError=''; state.firebaseReady=false; return false;}
     if(!firebaseConfig.projectId){state.syncError='projectId غير موجود في Firebase config'; state.firebaseReady=false; return false;}
     let lastError='';
     const testData={ok:true,projectId:firebaseConfig.projectId,companyKey,ts:Date.now(),from:'oscar-sync-rootfix'};
@@ -387,7 +397,7 @@ const App = (() => {
           await rtdbRemove(docPath(name,id));
         }else{
           const localItem=coll(name).find(x=>String(x.id)===id);
-          const data=normalizeItemForRemote(job.data || localItem || {id});
+          const data=normalizeItemForRemote(localItem || job.data || {id});
           await rtdbSet(docPath(name,id), data);
           if(state.store._deleted?.[name]) delete state.store._deleted[name][id];
         }
@@ -406,6 +416,14 @@ const App = (() => {
     state.syncPromise=(async()=>{
       state.syncing=true; updateStatus();
       try{
+        if(!navigator.onLine){
+          state.firebaseReady=false;
+          state.syncError='';
+          saveStore(false);
+          updateStatus();
+          if(showToast) toast('تم الحفظ محلياً؛ ستتم المزامنة تلقائياً عند عودة الإنترنت','warn');
+          return;
+        }
         const ok=await pickDatabaseURL(false);
         if(!ok) throw new Error(state.syncError || 'Firebase غير جاهز');
         await ensureRemoteBase();
@@ -433,7 +451,13 @@ const App = (() => {
     return state.syncPromise;
   }
   async function initFirebase(){ await runFullSync(false); listenAll(); }
-  function autoSync(){ if(!navigator.onLine){updateStatus(); return;} clearTimeout(state.autoSyncTimer); state.autoSyncTimer=setTimeout(()=>runFullSync(false).catch(e=>{state.syncError=e?.message||String(e); updateStatus();}),160); }
+  function autoSync(){
+    saveStore(false);
+    updateStatus();
+    if(!navigator.onLine) return;
+    clearTimeout(state.autoSyncTimer);
+    state.autoSyncTimer=setTimeout(()=>runFullSync(false).catch(e=>{state.syncError=e?.message||String(e); updateStatus();}),160);
+  }
   function listenAll(){
     if(state.syncTimer) clearInterval(state.syncTimer);
     state.syncTimer=setInterval(()=>{ if(navigator.onLine && !state.syncing){ runFullSync(false).catch(e=>{state.syncError=e?.message||String(e); updateStatus();}); } }, 3000);
@@ -443,7 +467,7 @@ const App = (() => {
     state.online=navigator.onLine; const dot=$('#netDot'), pend=$('#pendingCount'), btn=$('#syncBtn');
     const pending=state.store? state.store._pendingSync.length : 0;
     if(dot) dot.classList.toggle('off',!state.online || !!state.syncError);
-    if(btn) btn.title = state.syncError ? ('فشل آخر تزامن: '+shortSyncError()) : (state.localBridgeReady?'جسر محلي متصل':(state.online?'متصل - اضغط للمزامنة':'بدون نت'));
+    if(btn) btn.title = state.syncError ? ('فشل آخر تزامن: '+shortSyncError()) : (state.localBridgeReady?'جسر محلي متصل':(state.online?'متصل - اضغط للمزامنة':'بدون نت - محفوظ محلياً وسيزامن تلقائياً'));
     if(pend){ pend.textContent = pending? String(pending) : ''; pend.classList.toggle('hidden', !pending); }
     if(btn) btn.classList.toggle('syncing', !!state.syncing);
   }
@@ -452,8 +476,9 @@ const App = (() => {
     $$('.nav-link').forEach(a=>{ if(a.dataset.page===state.page) a.classList.add('active') }); hideByPermissions(); applyStoreName(); initSmartSelects(document);
     $('#menuBtn')?.addEventListener('click',()=>toggleSide(true)); $('#sideOverlay')?.addEventListener('click',()=>toggleSide(false)); $('#closeSide')?.addEventListener('click',()=>toggleSide(false));
     $('#themeBtn')?.addEventListener('click',toggleTheme); $('#syncBtn')?.addEventListener('click',()=>runFullSync(true));
-    window.addEventListener('online',()=>{updateStatus(); runFullSync(false); toast('عاد الاتصال، سيتم رفع البيانات تلقائياً')});
-    window.addEventListener('offline',()=>{updateStatus(); toast('تم تفعيل وضع بدون نت','warn')});    if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(console.warn);
+    window.addEventListener('online',()=>{state.syncError=''; state.firebaseReady=false; updateStatus(); setTimeout(()=>runFullSync(false),250); toast('عاد الاتصال، سيتم رفع البيانات المحلية تلقائياً')});
+    window.addEventListener('offline',()=>{state.syncError=''; updateStatus(); saveStore(false); toast('وضع بدون إنترنت: يمكنك البيع والإضافة والحذف محلياً','warn')});
+    window.addEventListener('beforeunload',()=>{try{if(state.store) localStorage.setItem(storeKey(), JSON.stringify(state.store));}catch(e){}});    if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(console.warn);
     document.addEventListener('click', handleGlobalClick);
     document.addEventListener('input', handleGlobalInput);
     document.addEventListener('change', handleGlobalInput);
@@ -491,8 +516,26 @@ const App = (() => {
   function openModal(title, html, saveText='حفظ', onSave=null){
     const box=document.createElement('div'); box.className='modal-backdrop show'; box.innerHTML=`<div class="modal"><div class="modal-head"><h3 class="section-title" style="margin:0">${title}</h3><button class="icon-btn" id="modalClose">✕</button></div><div class="modal-body">${html}</div><div class="toolbar" style="justify-content:flex-end;margin-top:14px"><button class="ghost-btn" id="modalCancel">إلغاء</button>${onSave?`<button class="primary-btn" id="modalSave">${saveText}</button>`:''}</div></div>`;
     document.body.appendChild(box); initSmartSelects(box);
-    const close=()=>box.remove(); box.querySelector('#modalClose').onclick=close; box.querySelector('#modalCancel').onclick=close; box.onclick=e=>{if(e.target===box)close()};
-    if(onSave) box.querySelector('#modalSave').onclick=async()=>{ const result=await onSave(box); if(result!==false) close(); };
+    const close=()=>{ box.remove(); setTimeout(()=>{ if(state.renderPending) scheduleRender(true); },60); };
+    box.querySelector('#modalClose').onclick=close; box.querySelector('#modalCancel').onclick=close; box.onclick=e=>{if(e.target===box)close()};
+    if(onSave) box.querySelector('#modalSave').onclick=async()=>{
+      const btn=box.querySelector('#modalSave');
+      if(btn) btn.disabled=true;
+      try{
+        const beforePending=state.store?._pendingSync?.length||0;
+        const result=await onSave(box);
+        if(result!==false){
+          close();
+          setTimeout(()=>{ state.renderPending=true; scheduleRender(true); updateStatus(); },80);
+          if(!navigator.onLine && (state.store?._pendingSync?.length||0)>beforePending) toast('تم الحفظ محلياً وسيزامن تلقائياً عند عودة الإنترنت','warn');
+        }
+      }catch(e){
+        console.error('local action failed', e);
+        toast('تعذر تنفيذ العملية محلياً: '+String(e?.message||e).slice(0,120),'bad');
+      }finally{
+        if(document.body.contains(box) && btn) btn.disabled=false;
+      }
+    };
     setTimeout(()=>box.querySelector('input,select,textarea')?.focus(),80); return box;
   }
   function confirmDelete(colName,id,msg){ if(confirm('تأكيد الحذف؟ سيتم تسجيل الحركة ومزامنتها.')){deleteItem(colName,id,msg); toast(msg)} }
