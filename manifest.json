@@ -1,10 +1,10 @@
 {
-  "name": "أوسكار - نظام إدارة المبيعات",
+  "name": "أوسكار POS",
   "short_name": "أوسكار",
-  "description": "تطبيق كاشير ومخزون وفواتير وصلاحيات للموظفين",
+  "description": "تطبيق كاشير ومخزون PWA مع مزامنة Firebase Realtime Database وربط ماسح محلي.",
   "lang": "ar",
   "dir": "rtl",
-  "start_url": "login.html",
+  "start_url": "index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
@@ -12,13 +12,13 @@
   "theme_color": "#174EA6",
   "icons": [
     {
-      "src": "assets/icons/icon-192.png",
+      "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "assets/icons/icon-512.png",
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -30,7 +30,7 @@
       "url": "cashier.html",
       "icons": [
         {
-          "src": "assets/icons/icon-192.png",
+          "src": "icon-192.png",
           "sizes": "192x192"
         }
       ]
@@ -40,7 +40,7 @@
       "url": "products.html",
       "icons": [
         {
-          "src": "assets/icons/icon-192.png",
+          "src": "icon-192.png",
           "sizes": "192x192"
         }
       ]

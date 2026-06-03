@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="أوسكار POS">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <title>التنبيهات - أوسكار</title><script>try{if(!localStorage.getItem('oscarSession')){document.documentElement.style.visibility='hidden';location.replace('index.html');}}catch(e){location.replace('index.html')}</script>
+  <title>لوحة التحكم - أوسكار</title><script>try{if(!localStorage.getItem('oscarSession')){document.documentElement.style.visibility='hidden';location.replace('index.html');}}catch(e){location.replace('index.html')}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -49,7 +49,7 @@
 
 </style>
 </head>
-<body data-page="notifications">
+<body data-page="dashboard">
   <div id="toast" class="toast"></div>
   <div class="app">
     <aside id="sidebar" class="sidebar">
@@ -60,11 +60,32 @@
     <div id="sideOverlay" class="overlay"></div>
     <main class="main">
       <header class="top-card no-print">
-        <div class="brand"><button id="menuBtn" class="icon-btn">☰</button><div><h1>التنبيهات</h1><small>تنبيهات نقص المخزون والديون المفتوحة.</small></div></div>
+        <div class="brand"><button id="menuBtn" class="icon-btn">☰</button><div><h1>لوحة التحكم</h1><small>ملخص الحسابات والمبيعات والديون.</small></div></div>
         <div class="top-actions"><button id="syncBtn" class="icon-btn sync-dot-btn" title="المزامنة"><span id="netDot" class="dot"></span><small id="pendingCount" class="hidden"></small></button><button id="themeBtn" class="icon-btn theme-icon-btn" title="الوضع الليلي"><svg class="theme-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.8 6.8 0 0 0 9.8 9.8Z"/></svg></button></div></header>
-      <section class="page-head"><div><h2 class="page-title">التنبيهات</h2><p class="page-sub">تنبيهات نقص المخزون والديون المفتوحة.</p></div></section>
+      <section class="page-head"><div><h2 class="page-title">لوحة التحكم</h2><p class="page-sub">ملخص الحسابات والمبيعات والديون.</p></div><a class="primary-btn" href="cashier.html">فاتورة جديدة</a></section>
       <section id="pageRoot">
-<div class="card"><div class="toolbar"><h3 class="section-title">التنبيهات الذكية</h3><button class="ghost-btn" data-action="clearNotifications">مسح التنبيهات اليدوية</button></div><div id="notificationsList" class="activity-list"></div></div>
+<div class="hero-balance">
+  <p>إجمالي أرصدة الحسابات</p>
+  <h2 id="dashBalance">₪ 0.00</h2>
+  <small>يحسب من الرصيد الافتتاحي + الواردات - الصادرات لكل حساب.</small>
+</div>
+<div class="stats-grid">
+  <div class="stat-card"><div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0ZM4 21a8 8 0 0 1 16 0"/></svg></div><div><div class="stat-value" id="countCustomers">0</div><div class="stat-label">عدد العملاء</div></div></div>
+  <div class="stat-card"><div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1-2 1-2-1-2 1-2-1-2 1V3Zm4 5h6M8 12h8M8 16h5"/></svg></div><div><div class="stat-value" id="countInvoices">0</div><div class="stat-label">عدد الفواتير</div></div></div>
+  <div class="stat-card"><div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M3 7h18v10H3V7Zm3 3h3m6 4h3M7 17v2m10-2v2"/></svg></div><div><div class="stat-value" id="dashSales">₪ 0.00</div><div class="stat-label">مبيعات اليوم</div></div></div>
+  <div class="stat-card"><div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M12 3v18M17 7H9.5a3 3 0 0 0 0 6H14a3 3 0 0 1 0 6H7"/></svg></div><div><div class="stat-value" id="openDebts">₪ 0.00</div><div class="stat-label">ديون مفتوحة</div></div></div>
+  <div class="stat-card"><div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M4 19h16M6 16l4-5 3 3 5-8"/></svg></div><div><div class="stat-value" id="profitTotal">₪ 0.00</div><div class="stat-label">إجمالي الأرباح</div></div></div>
+  <div class="stat-card"><div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16v10H4V7Zm4 3h3M16 14h1M7 19h10"/></svg></div><div><div class="stat-value" id="expenseTotal">₪ 0.00</div><div class="stat-label">المصروفات</div></div></div>
+  <div class="stat-card"><div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M12 3 2.8 20h18.4L12 3Zm0 6v5m0 3h.01"/></svg></div><div><div class="stat-value" id="lowProducts">0</div><div class="stat-label">منتجات ناقصة</div></div></div>
+</div>
+<div class="card" style="margin-top:16px">
+  <div class="toolbar" style="justify-content:space-between"><h3 class="section-title">آخر الحركات</h3><button class="ghost-btn" data-action="showMoreActivity" id="moreActivity">عرض المزيد</button></div>
+  <div id="activityList" class="activity-list"></div>
+</div>
+<div class="card no-print" style="margin-top:16px">
+  <div class="toolbar"><button class="ghost-btn" data-action="exportBackup">تنزيل نسخة احتياطية</button><input type="file" id="backupFile" accept="application/json" class="hidden"><button class="ghost-btn" onclick="document.getElementById('backupFile').click()">استيراد نسخة</button></div>
+  <p class="page-sub">النسخة الاحتياطية تحفظ بيانات المتصفح الحالية، مفيدة قبل أي تحديث كبير.</p>
+</div>
 </section>
     </main>
     <nav class="bottom-nav no-print"><a href="dashboard.html" class="nav-link" data-page="dashboard"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5v8a1.5 1.5 0 0 1-1.5 1.5H15v-6H9v6H4.5A1.5 1.5 0 0 1 3 19.5v-8Z"/></svg></span><small>الرئيسية</small></a><a href="cashier.html" class="nav-link" data-page="cashier" data-permission="viewSales"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 0 1 1 1v17l-3-1.5-3 1.5-3-1.5L7 21V4a1 1 0 0 1 1-1Zm3 5h6M9 12h6M9 16h4"/></svg></span><small>الكاشير</small></a><a href="products.html" class="nav-link" data-page="products" data-permission="viewProducts"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 0v9m8-4.5-8 4.5-8-4.5"/></svg></span><small>المنتجات</small></a><a href="customers.html" class="nav-link" data-page="customers" data-permission="viewCustomers"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0ZM4 21a8 8 0 0 1 16 0M18 8a3 3 0 0 1 3 3M21 21a6 6 0 0 0-4-5.66"/></svg></span><small>العملاء</small></a><a href="accounts.html" class="nav-link" data-page="accounts" data-permission="manageAccounts"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h13A2.5 2.5 0 0 1 21 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5v-9Zm0 3h18M7 15h4"/></svg></span><small>الحسابات</small></a><a href="invoices.html" class="nav-link" data-page="invoices" data-permission="viewSales"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1-2 1-2-1-2 1-2-1-2 1V3Zm4 5h6M8 12h8M8 16h5"/></svg></span><small>الفواتير</small></a></nav>
