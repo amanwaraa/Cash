@@ -1,5 +1,5 @@
 {
-  "version": "6.4.9-cashier-customer-search",
+  "version": "6.5.0-strict-company-login",
   "date": "2026-06-03",
-  "notes": "Cashier customer field is now empty by default, searches from the first character, shows name, phone and debt, supports spaces, and creates a new customer locally if no match exists."
+  "notes": "Strict company-key login: no default credentials, no auto login from saved session, no browser autofill, and each key accepts only its own admin or employee username/password."
 }

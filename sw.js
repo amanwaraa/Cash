@@ -1,4 +1,4 @@
-const CACHE_NAME = 'oscar-v6.4.9-cashier-customer-search';
+const CACHE_NAME = 'oscar-v6.5.0-strict-company-login';
 const PRECACHE = [
   './',
   'index.html',
