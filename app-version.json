@@ -1,5 +1,8 @@
 {
-  "version": "6.5.0-strict-company-login",
+  "version": "6.4.13-local-first-delete-edit",
   "date": "2026-06-03",
-  "notes": "Strict company-key login: no default credentials, no auto login from saved session, no browser autofill, and each key accepts only its own admin or employee username/password."
+  "notes": "عزل التخزين المحلي والسلة وجلسة ربط الجوال حسب مفتاح الشركة ومنع خلط بيانات مفتاح بآخر.",
+  "build": "isolated-company-local-store",
+  "updatedAt": 1780520364462,
+  "note": "حذف وتعديل محلي فوري مع مزامنة لاحقة وعدم رجوع البيانات القديمة من Firebase"
 }

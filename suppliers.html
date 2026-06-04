@@ -84,7 +84,11 @@ const App = (() => {
   const APP_INSTANCE_ID = 'oscar-pos';
   const session = JSON.parse(localStorage.getItem('oscarSession')||'null');
   const companyKey = new URLSearchParams(location.search).get('company') || session?.companyKey || 'COMPANY001';
-  const storeKey = () => 'oscarStoreV2_' + companyKey;
+  const safeLocalPart = v => encodeURIComponent(String(v || 'COMPANY001').trim());
+  const companyLocalPart = safeLocalPart(companyKey);
+  const localKey = name => `oscar_${name}_${companyLocalPart}`;
+  const storeKey = () => `oscarStoreV2__company__${companyLocalPart}`;
+  const legacyStoreKey = () => 'oscarStoreV2_' + companyKey;
   const DB_PATH = ['companies', companyKey, 'data'];
   const collections = ['products','customers','suppliers','accounts','invoices','expenses','activity','inventory','notifications','settings','scannerSessions','scannerEvents','employees'];
   const defaultStore = () => ({
@@ -93,7 +97,7 @@ const App = (() => {
     settings: [{id:'main',storeName:'أوسكار',currency:'₪',lowStock:5,printWidth:'58mm',autoPrintInvoice:false}],
     _pendingSync: [], _deleted: {}, _lastLocalChange: Date.now()
   });
-  const state = {store:null,page:document.body.dataset.page||'dashboard',online:navigator.onLine,db:null,auth:null,user:null,firebaseReady:false,unsubs:[],deferredPrompt:null,activityShown:5,scannerStream:null,scanLast:{code:'',time:0},cashierSession:null,bc:null,rtcPc:null,rtcChannel:null,localBridge:null,localBridgeReady:false,bridgeTried:false,didEnsureRemote:false,didSnapshotPush:localStorage.getItem('oscarSnapshotPushed_'+companyKey)==='1'};
+  const state = {store:null,page:document.body.dataset.page||'dashboard',online:navigator.onLine,db:null,auth:null,user:null,firebaseReady:false,unsubs:[],deferredPrompt:null,activityShown:5,scannerStream:null,scanLast:{code:'',time:0},cashierSession:null,bc:null,rtcPc:null,rtcChannel:null,localBridge:null,localBridgeReady:false,bridgeTried:false,didEnsureRemote:false,didSnapshotPush:localStorage.getItem(localKey('snapshotPushed'))==='1'};
   const $ = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => [...r.querySelectorAll(s)];
   const uid = (p='id') => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;
@@ -103,8 +107,107 @@ const App = (() => {
   const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const settings = () => (state.store.settings && state.store.settings[0]) || defaultStore().settings[0];
   const coll = name => state.store[name] || [];
+
+  function storeBusinessCount(s){
+    if(!s || typeof s!=='object') return 0;
+    let count=0;
+    ['products','customers','suppliers','invoices','expenses','inventory','notifications','employees'].forEach(k=>{ if(Array.isArray(s[k])) count+=s[k].filter(Boolean).length; });
+    if(Array.isArray(s.accounts)) count+=s.accounts.filter(a=>String(a.id)!=='cash' || n(a.balance)!==0 || (Array.isArray(a.movements)&&a.movements.length>1)).length;
+    return count;
+  }
+  function parseLocalStoreKey(key){
+    try{ const raw=localStorage.getItem(key); if(!raw) return null; const val=JSON.parse(raw); return val && typeof val==='object' ? val : null; }catch(e){ return null; }
+  }
+  function sameCompanyLegacyKeys(){
+    const keys=[legacyStoreKey()];
+    // البيانات العامة القديمة لا تُقرأ إلا لمفتاح COMPANY001 فقط حتى لا تختلط بيانات شركة بأخرى على نفس الجهاز.
+    if(String(companyKey)==='COMPANY001') keys.push('oscarStoreV2','oscarStoreV2_COMPANY001');
+    return [...new Set(keys)].filter(k=>k && k!==storeKey());
+  }
+  function readCurrentCompanyStore(){
+    const current=parseLocalStoreKey(storeKey());
+    if(current) return current;
+    for(const k of sameCompanyLegacyKeys()){
+      const legacy=parseLocalStoreKey(k);
+      if(legacy && storeBusinessCount(legacy)) return legacy;
+    }
+    return null;
+  }
+  function movementKey(m){ return String(m?.id || [m?.refType,m?.refId,m?.kind,m?.type,m?.amount,m?.date,m?.note].join('|')); }
+  function mergeMovements(a=[], b=[]){
+    const map=new Map();
+    [...(Array.isArray(a)?a:[]), ...(Array.isArray(b)?b:[])].filter(Boolean).forEach(m=>map.set(movementKey(m), m));
+    return [...map.values()].sort((x,y)=>new Date(y.date||0)-new Date(x.date||0));
+  }
+  function recalcAccountBalance(acc){
+    const opening=n(acc?.opening);
+    const moves=Array.isArray(acc?.movements)?acc.movements:[];
+    const sum=moves.filter(m=>m.kind!=='opening').reduce((a,m)=>a+n(m.amount),0);
+    if(moves.length) acc.balance=opening+sum;
+    return acc;
+  }
+  function recalcDebtEntity(ent){
+    const moves=Array.isArray(ent?.movements)?ent.movements:[];
+    if(moves.length){
+      ent.debt=moves.reduce((a,m)=>a+(m.type==='payment'?-n(m.amount):n(m.amount)),0);
+      if(ent.debt<0) ent.debt=0;
+    }
+    return ent;
+  }
+  function mergeItemRecords(collectionName, current, incoming){
+    if(!current) return incoming;
+    if(!incoming) return current;
+    const newer = remoteTs(incoming) >= remoteTs(current) ? incoming : current;
+    const older = newer===incoming ? current : incoming;
+    let out={...older,...newer};
+    if(['accounts','customers','suppliers'].includes(collectionName)){
+      out.movements=mergeMovements(current.movements, incoming.movements);
+      if(collectionName==='accounts') out=recalcAccountBalance(out);
+      else out=recalcDebtEntity(out);
+    }
+    return out;
+  }
+  function mergeStoreObjectIntoCurrent(src, sourceName='legacy'){
+    if(!src || !storeBusinessCount(src)) return false;
+    let changed=false;
+    collections.forEach(name=>{
+      const srcRows=Array.isArray(src[name]) ? src[name].filter(Boolean) : [];
+      if(!srcRows.length) return;
+      if(!Array.isArray(state.store[name])) state.store[name]=[];
+      const map=new Map(state.store[name].filter(x=>x&&x.id).map(x=>[String(x.id),x]));
+      srcRows.forEach(row=>{
+        if(!row || !row.id || String(row.id).startsWith('__')) return;
+        const id=String(row.id);
+        const merged=mergeItemRecords(name, map.get(id), {...row,id,updatedAt:Number(row.updatedAt||row.createdAt||Date.now())});
+        if(JSON.stringify(map.get(id)||null)!==JSON.stringify(merged||null)){ map.set(id, merged); changed=true; }
+      });
+      state.store[name]=[...map.values()].sort((a,b)=>(remoteTs(b)||0)-(remoteTs(a)||0));
+    });
+    if(changed){
+      state.store._lastLocalChange=Date.now();
+      state.didSnapshotPush=false;
+      localStorage.removeItem(localKey('snapshotPushed'));
+      state.store.activity=state.store.activity||[];
+      const item={id:uid('act'),text:'استرجاع بيانات قديمة إلى مفتاح الشركة الحالي',type:'info',meta:{source:sourceName},date:nowIso()};
+      state.store.activity.unshift(item);
+      state.store.activity=state.store.activity.slice(0,300);
+    }
+    return changed;
+  }
+  function importLegacyLocalStores(){
+    const marker=localKey('legacyLocalImported');
+    if(localStorage.getItem(marker)==='1') return false;
+    // استيراد محلي محدود لنفس المفتاح فقط، وليس من مفاتيح شركات أخرى.
+    let changed=false;
+    sameCompanyLegacyKeys().forEach(k=>{
+      const src=parseLocalStoreKey(k);
+      if(src && mergeStoreObjectIntoCurrent(src,k)) changed=true;
+    });
+    localStorage.setItem(marker,'1');
+    return changed;
+  }
   function loadStore(){
-    try{state.store = JSON.parse(localStorage.getItem(storeKey())) || defaultStore()}catch(e){state.store = defaultStore()}
+    try{state.store = readCurrentCompanyStore() || defaultStore()}catch(e){state.store = defaultStore()}
     const d = defaultStore(); collections.forEach(c=>{ if(!Array.isArray(state.store[c])) state.store[c]=d[c] || [] });
     if(!Array.isArray(state.store._pendingSync)) state.store._pendingSync=[];
     if(!state.store._deleted || typeof state.store._deleted!=='object') state.store._deleted={};
@@ -173,7 +276,48 @@ const App = (() => {
   const pagePermission = {cashier:'viewSales',products:'viewProducts',customers:'viewCustomers',accounts:'manageAccounts',suppliers:'manageSuppliers',invoices:'viewSales',inventory:'viewProducts',expenses:'manageExpenses',finance:'viewReports',analytics:'viewReports',notifications:'viewReports',employees:'manageEmployees',settings:'manageSettings'};
   function perms(){ return session?.role==='admin' ? fullPermissions : (session?.permissions || {}); }
   function hasPerm(k){ return !k || session?.role==='admin' || !!perms()[k]; }
-  function ensureSession(){ if(!session && state.page!=='scanner'){ location.replace('index.html'); return false; } return true; }
+  function cachedCompanyAccess(){
+    try{return JSON.parse(localStorage.getItem('oscarCompany_'+companyKey)||'null')}catch(e){return null}
+  }
+  function isCompanyExpiredOrStopped(c){
+    if(!c) return false;
+    if(c.active===false) return true;
+    const end=String(c.subscriptionEnd||'').trim();
+    if(end && end!=='2099-12-31' && new Date(end+'T23:59:59') < new Date()) return true;
+    return false;
+  }
+  function companyStopReason(c){
+    if(c?.active===false) return 'تم إيقاف مفتاح الشركة، تم تسجيل الخروج';
+    const end=String(c?.subscriptionEnd||'').trim();
+    if(end && end!=='2099-12-31' && new Date(end+'T23:59:59') < new Date()) return 'انتهى اشتراك الشركة، تم تسجيل الخروج';
+    return 'انتهت صلاحية الدخول، تم تسجيل الخروج';
+  }
+  function forceSessionLogout(reason){
+    if(state.forceLoggingOut) return;
+    state.forceLoggingOut=true;
+    try{localStorage.setItem('oscarLoginNotice', reason||'تم تسجيل الخروج');}catch(e){}
+    localStorage.removeItem('oscarSession');
+    try{toast(reason||'تم تسجيل الخروج','warn')}catch(e){}
+    setTimeout(()=>location.replace('index.html'),700);
+  }
+  function normalizeCompanyAdmin(admin){
+    if(!admin) return null;
+    if(admin.main) return admin.main;
+    if(admin.username || admin.passwordHash) return admin;
+    return null;
+  }
+  function objectRows(val){
+    if(!val) return [];
+    if(Array.isArray(val)) return val.filter(Boolean).map(x=>({id:x.id,...x}));
+    return Object.entries(val).filter(([id])=>!String(id).startsWith('__')).map(([id,data])=>({id,...(data||{})}));
+  }
+  function ensureSession(){
+    if(!session && state.page!=='scanner'){
+      location.replace('index.html');
+      return false;
+    }
+    return true;
+  }
   function guardPage(){ const need=pagePermission[state.page]; if(need && !hasPerm(need)){ toast('ليس لديك صلاحية الوصول لهذا القسم','bad'); setTimeout(()=>location.href='dashboard.html',900); return false; } return true; }
   function canDoAction(act){ const m={addProduct:'addProducts',editProduct:'editProducts',deleteProduct:'deleteProducts',saveInvoice:'addSales',deleteInvoice:'deleteSales',addExpense:'manageExpenses',editExpense:'manageExpenses',deleteExpense:'manageExpenses',addAccount:'manageAccounts',editAccount:'manageAccounts',deleteAccount:'manageAccounts',accountMove:'manageAccounts',transfer:'manageAccounts',addSupplier:'manageSuppliers',editSupplier:'manageSuppliers',deleteSupplier:'manageSuppliers',supplierPay:'manageSuppliers',addEmployee:'manageEmployees',editEmployee:'manageEmployees',deleteEmployee:'manageEmployees',saveSettings:'manageSettings',exportBackup:'export',clearNotifications:'viewReports'}; return hasPerm(m[act]); }
   function hideByPermissions(){ $$('.nav-link[data-permission]').forEach(a=>{ if(!hasPerm(a.dataset.permission)) a.remove(); }); const info=$('#sessionInfo'); if(info) info.textContent=`${session?.name||session?.userId||''} — ${session?.role==='admin'?'مدير':'موظف'} — ${companyKey}`; }
@@ -201,10 +345,27 @@ const App = (() => {
   function queue(op, collectionName, id, data=null, renderAfter=true){
     if(!state.store._pendingSync) state.store._pendingSync=[];
     const sid=String(id||'');
+    // آخر عملية محلية لنفس العنصر هي المعتمدة. هذا يمنع رجوع عنصر محذوف أو قديم عند المزامنة.
     if(op==='delete') state.store._pendingSync=state.store._pendingSync.filter(j=>!(String(j.id||'')===sid && (j.collectionName||j.collection)===collectionName));
     else state.store._pendingSync=state.store._pendingSync.filter(j=>!(String(j.id||'')===sid && (j.collectionName||j.collection)===collectionName && j.op==='set'));
     state.store._pendingSync.push({_qid:uid('sync'),op,collectionName,id:sid,data,ts:Date.now()});
     state.store._lastLocalChange=Date.now(); if(renderAfter) saveStore();
+  }
+  function hasPendingOp(collectionName,id,op=''){
+    const sid=String(id||'');
+    return Array.isArray(state.store?._pendingSync) && state.store._pendingSync.some(j=>{
+      const same=String(j.id||'')===sid && (j.collectionName||j.collection)===collectionName;
+      return same && (!op || j.op===op);
+    });
+  }
+  function afterLocalMutation(force=true){
+    saveStore(false);
+    updateStatus();
+    if(force){
+      if(document.querySelector('.modal-backdrop.show')) state.renderPending=true;
+      else scheduleRender(true);
+    }
+    autoSync();
   }
   function upsertLocal(collectionName, item){
     if(!item.id) item.id=uid(collectionName.slice(0,3));
@@ -217,8 +378,21 @@ const App = (() => {
   }
   function markDeleted(collectionName,id){ if(!state.store._deleted) state.store._deleted={}; if(!state.store._deleted[collectionName]) state.store._deleted[collectionName]={}; state.store._deleted[collectionName][String(id)]=Date.now(); }
   function removeLocal(collectionName, id){markDeleted(collectionName,id); state.store[collectionName]=coll(collectionName).filter(x=>String(x.id)!==String(id))}
-  function setItem(collectionName, item, activityText=''){ if(!item.id) item.id=uid(collectionName.slice(0,3)); const saved=upsertLocal(collectionName,item); queue('set',collectionName,saved.id,saved,false); if(activityText) logActivity(activityText,'set',{collectionName,id:saved.id}); saveStore(); autoSync(); return saved; }
-  function deleteItem(collectionName,id,activityText=''){ removeLocal(collectionName,id); queue('delete',collectionName,id,null,false); if(activityText) logActivity(activityText,'delete',{collectionName,id}); saveStore(); autoSync(); return true; }
+  function setItem(collectionName, item, activityText=''){
+    if(!item.id) item.id=uid(collectionName.slice(0,3));
+    const saved=upsertLocal(collectionName,item);
+    queue('set',collectionName,saved.id,saved,false);
+    if(activityText) logActivity(activityText,'set',{collectionName,id:saved.id});
+    afterLocalMutation(true);
+    return saved;
+  }
+  function deleteItem(collectionName,id,activityText=''){
+    removeLocal(collectionName,id);
+    queue('delete',collectionName,id,null,false);
+    if(activityText) logActivity(activityText,'delete',{collectionName,id});
+    afterLocalMutation(true);
+    return true;
+  }
   function normalizeItemForRemote(item){
     const out={...(item||{})};
     if(!out.id && item?.id!==0) return null;
@@ -235,10 +409,12 @@ const App = (() => {
     rows.forEach(r=>{
       if(!r || !r.id || String(r.id).startsWith('__')) return;
       const id=String(r.id);
-      const delTs=Number(deleted[id]||0);
-      if(delTs && remoteTs(r) <= delTs) return;
+      // Local-First: أي حذف محلي أو عملية حذف معلقة تربح على Firebase حتى تتم مزامنتها.
+      if(deleted[id] || hasPendingOp(collectionName,id,'delete')) return;
       const old=map.get(id);
-      map.set(id, old && remoteTs(old) > remoteTs(r) ? old : r);
+      // لو عندي تعديل محلي معلق لنفس العنصر لا تسمح للسحبة من Firebase أن ترجع النسخة القديمة.
+      if(old && hasPendingOp(collectionName,id,'set')) return;
+      map.set(id, old && remoteTs(old) >= remoteTs(r) ? old : r);
     });
     state.store[collectionName]=[...map.values()].sort((a,b)=>(remoteTs(b)||0)-(remoteTs(a)||0));
   }
@@ -309,12 +485,92 @@ const App = (() => {
     if(Array.isArray(val)) return val.filter(Boolean).map(x=>({id:String(x.id),...x}));
     return Object.entries(val).filter(([id])=>!String(id).startsWith('__')).map(([id,data])=>({id, ...(data||{})}));
   }
+
+  async function importLegacyRemoteData(){
+    const marker=localKey('legacyRemoteImported');
+    if(localStorage.getItem(marker)==='1') return false;
+    if(!navigator.onLine || !state.firebaseReady) return false;
+    const legacyCompany='COMPANY001';
+    // المسارات العامة القديمة تُستورد فقط عند الدخول بمفتاح COMPANY001، منعاً لخلط بيانات المفاتيح.
+    if(String(companyKey)!==legacyCompany){
+      localStorage.setItem(marker,'1');
+      return false;
+    }
+    const pathSets=[];
+    for(const name of collections){
+      pathSets.push([name, [`data/${name}`, name]]);
+    }
+    let changed=false;
+    for(const [name,paths] of pathSets){
+      for(const path of paths){
+        try{
+          const rows=rowsFromVal(await rtdbGet(path).catch(()=>null));
+          if(rows.length){ mergeRemote(name, rows); changed=true; }
+        }catch(e){ console.warn('legacy import skipped', path, e); }
+      }
+    }
+    if(changed){
+      state.didSnapshotPush=false;
+      localStorage.removeItem(localKey('snapshotPushed'));
+      saveStore(false);
+      updateStatus();
+    }
+    localStorage.setItem(marker,'1');
+    return changed;
+  }
+  async function refreshCompanyAccess(){
+    // فحص المفتاح صار صامتاً: لا يخرج المستخدم أثناء التنقل أو المزامنة.
+    // الهدف فقط تحديث بيانات الاسم/الصلاحيات إن وُجدت، بدون مراجعة مدة الاشتراك أو حذف الجلسة.
+    if(!session || state.page==='scanner') return true;
+    if(!navigator.onLine || !state.firebaseReady) return true;
+    try{
+      const company=await rtdbGet(`companies/${safePathPart(companyKey)}`).catch(()=>null);
+      if(!company || typeof company!=='object') return true;
+      const admin=normalizeCompanyAdmin(company.admin);
+      const employees=objectRows(company.employees || {});
+      const oldAccess=cachedCompanyAccess() || {companyKey};
+      const access={
+        ...oldAccess,
+        companyKey,
+        companyName:company.companyName||company.storeName||oldAccess.companyName||'',
+        storeName:company.storeName||company.companyName||oldAccess.storeName||'',
+        active:company.active!==false,
+        subscriptionEnd:company.subscriptionEnd||oldAccess.subscriptionEnd||'2099-12-31',
+        admin:admin||oldAccess.admin||null,
+        _fromCloud:true,
+        updatedAt:Date.now()
+      };
+      localStorage.setItem('oscarCompany_'+companyKey,JSON.stringify(access));
+      if(employees.length) localStorage.setItem('oscarEmployees_'+companyKey,JSON.stringify(employees));
+      if(session.role==='employee'){
+        const emp=employees.find(x=>String(x.id||'')===String(session.userId||'') || String(x.username||'')===String(session.username||''));
+        if(emp && emp.active!==false){
+          session.name=emp.name||emp.username||session.name;
+          session.username=emp.username||session.username;
+          session.permissions=emp.permissions||session.permissions||{};
+          localStorage.setItem('oscarSession',JSON.stringify(session));
+        }
+      }else if(session.role==='admin'){
+        session.permissions=fullPermissions;
+        localStorage.setItem('oscarSession',JSON.stringify(session));
+      }
+      if(access.storeName && state.store?.settings?.[0] && !state.store.settings[0].storeName){
+        state.store.settings[0].storeName=access.storeName;
+        saveStore(false);
+      }
+    }catch(e){
+      console.warn('company access refresh skipped', e);
+    }
+    return true;
+  }
   async function ensureRemoteBase(){
     if(state.didEnsureRemote) return;
     const path=`companies/${safePathPart(companyKey)}`;
     const company=await rtdbGet(path).catch(()=>null);
     if(!company){
-      await rtdbSet(path,{active:true,subscriptionEnd:'2099-12-31',storeName:settings().storeName||'أوسكار',data:{settings:{main:{...settings(),id:'main',updatedAt:Date.now(),companyKey}}},employees:{},createdAt:Date.now(),updatedAt:Date.now()});
+      // لا يتم تسجيل الخروج إذا لم تظهر بيانات المفتاح أثناء المزامنة؛ نكمل محلياً ونترك الرفع ينشئ المسار عند الحاجة.
+      state.didEnsureRemote=true;
+      return;
     }else if(!company.data?.settings){
       await rtdbSet(`companies/${safePathPart(companyKey)}/data/settings/main`,{...settings(),id:'main',updatedAt:Date.now(),companyKey});
     }
@@ -335,10 +591,58 @@ const App = (() => {
       }
       if(batch.length) await Promise.all(batch);
     }
-    state.didSnapshotPush=true; localStorage.setItem('oscarSnapshotPushed_'+companyKey,'1');
+    state.didSnapshotPush=true; localStorage.setItem(localKey('snapshotPushed'),'1');
   }
+  function remoteDeleteTs(v){
+    if(!v) return 0;
+    if(typeof v==='number') return Number(v)||0;
+    if(typeof v==='string') return Number(v)||0;
+    return Number(v.ts || v.deletedAt || v.updatedAt || 0) || 0;
+  }
+  function applyRemoteDeletedValue(val){
+    if(!val || typeof val!=='object') return false;
+    let changed=false;
+    const wipeTs=remoteDeleteTs(val.__wipe__ || val.wipeAll || val.clearAll);
+    const localWipe=Number(localStorage.getItem(localKey('lastRemoteWipeTs'))||0);
+    if(wipeTs && wipeTs>localWipe && wipeTs>=Number(state.store?._lastLocalChange||0)){
+      const keepSettings={...settings(),id:'main',updatedAt:Date.now()};
+      const pending=Array.isArray(state.store?._pendingSync) ? state.store._pendingSync.filter(j=>j.op==='clearCompany') : [];
+      state.store=defaultStore();
+      state.store.settings=[keepSettings];
+      state.store._pendingSync=pending;
+      state.store._deleted={};
+      localStorage.setItem(localKey('lastRemoteWipeTs'),String(wipeTs));
+      changed=true;
+    }
+    Object.entries(val).forEach(([collectionName, ids])=>{
+      if(collectionName.startsWith('__') || !collections.includes(collectionName) || !ids || typeof ids!=='object') return;
+      Object.entries(ids).forEach(([id, rec])=>{
+        const ts=remoteDeleteTs(rec);
+        if(!ts) return;
+        const local=coll(collectionName).find(x=>String(x.id)===String(id));
+        if(local && remoteTs(local) <= ts){
+          markDeleted(collectionName,id);
+          state.store[collectionName]=coll(collectionName).filter(x=>String(x.id)!==String(id));
+          changed=true;
+        }else if(!local){
+          markDeleted(collectionName,id);
+        }
+      });
+    });
+    if(changed){ state.store._lastLocalChange=Date.now(); saveStore(false); }
+    return changed;
+  }
+  async function pullRemoteDeletes(){
+    if(!state.firebaseReady || !navigator.onLine) return false;
+    try{
+      const val=await rtdbGet(`companies/${safePathPart(companyKey)}/deleted`).catch(()=>null);
+      return applyRemoteDeletedValue(val);
+    }catch(e){ console.warn('remote deletes skipped', e); return false; }
+  }
+
   async function pullAllRemote(){
     if(!state.firebaseReady || !navigator.onLine) return;
+    await pullRemoteDeletes();
     let hadError=false;
     const priority = state.page==='cashier'
       ? ['scannerEvents','products','customers','accounts','settings','scannerSessions','invoices','activity','inventory','notifications','suppliers','expenses','employees']
@@ -369,8 +673,18 @@ const App = (() => {
       const name=job.collectionName || job.collection;
       const id=String(job.id||'');
       try{
+        if(job.op==='clearCompany'){
+          const ts=Number(job.ts||Date.now());
+          await rtdbSet(`companies/${safePathPart(companyKey)}/deleted/__wipe__`,{ts,by:job.by||session?.username||session?.userId||'',companyKey});
+          await rtdbRemove(`companies/${safePathPart(companyKey)}/data`).catch(e=>console.warn('remote data clear skipped',e));
+          await rtdbRemove(`companies/${safePathPart(companyKey)}/employees`).catch(e=>console.warn('remote employees clear skipped',e));
+          done.push(job._qid || ('clearCompany'+ts)); state.syncError='';
+          continue;
+        }
         if(!name || !id || !collections.includes(name)){ done.push(job._qid || (job.ts+id+name)); continue; }
         if(job.op==='delete'){
+          const ts=Number(job.ts||state.store._deleted?.[name]?.[id]||Date.now());
+          await rtdbSet(`companies/${safePathPart(companyKey)}/deleted/${safePathPart(name)}/${safePathPart(id)}`,{ts,collectionName:name,id,by:session?.username||session?.userId||'',companyKey});
           await rtdbRemove(docPath(name,id));
         }else{
           const localItem=coll(name).find(x=>String(x.id)===id);
@@ -403,7 +717,9 @@ const App = (() => {
         }
         const ok=await pickDatabaseURL(false);
         if(!ok) throw new Error(state.syncError || 'Firebase غير جاهز');
+        await refreshCompanyAccess();
         await ensureRemoteBase();
+        await importLegacyRemoteData();
         const silentUi = !showToast && isInteractionLocked();
         await syncQueue();
         if(showToast || !state.didSnapshotPush) await pushLocalSnapshot();
@@ -476,7 +792,7 @@ const App = (() => {
       addExpense:()=>openExpense(), editExpense:()=>openExpense(id), deleteExpense:()=>deleteExpense(id),
       addInvoice:()=>location.href='cashier.html', printInvoice:()=>printInvoice(id), invoicePdf:()=>downloadInvoicePdf(id), invoiceImage:()=>downloadInvoiceImage(id), editInvoice:()=>openEditInvoice(id), deleteInvoice:()=>deleteInvoice(id),
       addInventory:()=>openInventoryAdjust(),
-      showMoreActivity:()=>{state.activityShown+=5; renderDashboard()}, openCashierCamera:()=>openBarcodeModal(code=>addBarcodeToCashier(code,'كاميرا الكاشير'), true), pairPhone:()=>createCashierSession(true), copyPair:()=>copyPairLink(), showPairBarcode:()=>openPairCodeModal(), openMobileScannerCamera:()=>openBarcodeModal(code=>window.sendMobileBarcode?.(code), true), addCustomLine:()=>openCustomLine(), saveInvoice:()=>saveInvoice(), clearCart:()=>{localStorage.removeItem('cashierCart'); const p=$('#paidAmount'); if(p){delete p.dataset.manual; p.value='0';} renderCashier();}, exportBackup:()=>exportBackup(), exportProductsExcel:()=>exportProductsExcel(), importBackup:()=>$('#backupFile')?.click(), clearNotifications:()=>{state.store.notifications=[]; saveStore(); toast('تم مسح التنبيهات')}
+      showMoreActivity:()=>{state.activityShown+=5; renderDashboard()}, openCashierCamera:()=>openBarcodeModal(code=>addBarcodeToCashier(code,'كاميرا الكاشير'), true), pairPhone:()=>createCashierSession(true), copyPair:()=>copyPairLink(), showPairBarcode:()=>openPairCodeModal(), openMobileScannerCamera:()=>openBarcodeModal(code=>window.sendMobileBarcode?.(code), true), addCustomLine:()=>openCustomLine(), saveInvoice:()=>saveInvoice(), clearCart:()=>{localStorage.removeItem(localKey('cashierCart')); const p=$('#paidAmount'); if(p){delete p.dataset.manual; p.value='0';} renderCashier();}, exportBackup:()=>exportBackup(), exportProductsExcel:()=>exportProductsExcel(), importBackup:()=>$('#backupFile')?.click(), clearAllCompanyData:()=>openClearAllDataModal(), clearNotifications:()=>{state.store.notifications=[]; saveStore(); toast('تم مسح التنبيهات')}
     };
     if(actions[act]) actions[act]();
   }
@@ -516,7 +832,7 @@ const App = (() => {
     };
     setTimeout(()=>box.querySelector('input,select,textarea')?.focus(),80); return box;
   }
-  function confirmDelete(colName,id,msg){ if(confirm('تأكيد الحذف؟ سيتم تسجيل الحركة ومزامنتها.')){deleteItem(colName,id,msg); toast(msg)} }
+  function confirmDelete(colName,id,msg){ if(confirm('تأكيد الحذف؟ سيتم تسجيل الحركة ومزامنتها.')){deleteItem(colName,id,msg); toast(msg); scheduleRender(true);} }
   function optionRows(arr, selected=''){ return arr.map(x=>`<option value="${esc(x.id)}" ${x.id===selected?'selected':''}>${esc(x.name||x.title||x.phone||x.id)}</option>`).join('') }
   function optionLabel(rows, selected=''){ const r=(rows||[]).find(x=>String(x.id)===String(selected)); return r ? `${r.name||r.title||r.phone||r.id}${r.balance!==undefined?' - '+money(r.balance):''}` : ''; }
   function smartOptions(rows, selected=''){ return (rows||[]).map(x=>{const label=`${x.name||x.title||x.phone||x.id}${x.balance!==undefined?' - '+money(x.balance):''}`; return `<button type="button" class="smart-option ${String(x.id)===String(selected)?'active':''}" data-value="${esc(x.id)}" data-label="${esc(label)}"><span>${esc(label)}</span><small>${esc(x.id)}</small></button>`}).join('') || '<div class="empty" style="padding:12px">لا توجد بيانات</div>'; }
@@ -580,7 +896,7 @@ const App = (() => {
   function deleteInvoice(id){
     const inv=coll('invoices').find(x=>String(x.id)===String(id)); if(!inv) return;
     if(!confirm('حذف الفاتورة؟ سيتم إرجاع المخزون، عكس حركة الحساب، عكس الدين، وتحديث التقارير.')) return;
-    reverseInvoiceEffects(inv); deleteItem('invoices',id,`حذف فاتورة ${inv.number}`); toast('تم حذف الفاتورة وإعادة الحسابات'); render();
+    reverseInvoiceEffects(inv); deleteItem('invoices',id,`حذف فاتورة ${inv.number}`); toast('تم حذف الفاتورة محلياً وإعادة الحسابات، وستتم مزامنة الحذف عند عودة الإنترنت'); scheduleRender(true);
   }
   function openEditInvoice(id){
     const inv=coll('invoices').find(x=>String(x.id)===String(id)); if(!inv) return;
@@ -588,7 +904,7 @@ const App = (() => {
       const old={...inv,items:[...(inv.items||[])]}; reverseInvoiceEffects(old);
       const paid=n($('#editInvPaid').value), debt=Math.max(0,n(inv.total)-paid);
       const updated={...inv,customerName:$('#editInvCustomer').value,phone:$('#editInvPhone').value,paid,debt,accountId:$('#editInvAccount').value,date:$('#editInvDate').value||inv.date,updatedAt:Date.now()};
-      setItem('invoices',updated,`تعديل فاتورة ${updated.number}`); applyInvoiceEffects(updated); toast('تم تعديل الفاتورة وإعادة الحسابات بنفس التاريخ'); render();
+      setItem('invoices',updated,`تعديل فاتورة ${updated.number}`); applyInvoiceEffects(updated); toast('تم تعديل الفاتورة محلياً وإعادة الحسابات بنفس التاريخ، وستتم المزامنة تلقائياً'); scheduleRender(true);
     });
     const paid=$('#editInvPaid'), prev=$('#editInvDebtPreview'); if(paid&&prev) paid.addEventListener('input',()=>prev.value=money(Math.max(0,n(inv.total)-n(paid.value))));
   }
@@ -620,8 +936,8 @@ const App = (() => {
   function setText(id,val){const el=$('#'+id); if(el) el.textContent=val}
   function productIconHtml(){ return '<span class="placeholder-icon"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 0v9m8-4.5-8 4.5-8-4.5"/></svg></span>'; }
   function productImageHtml(p){ return p?.image ? `<img src="${esc(p.image)}">` : productIconHtml(); }
-  function getCart(){try{return JSON.parse(localStorage.getItem('cashierCart'))||[]}catch(e){return []}}
-  function setCart(c){localStorage.setItem('cashierCart',JSON.stringify(c)); renderCashier()}
+  function getCart(){try{return JSON.parse(localStorage.getItem(localKey('cashierCart')))||[]}catch(e){return []}}
+  function setCart(c){localStorage.setItem(localKey('cashierCart'),JSON.stringify(c)); renderCashier()}
   function renderCashier(){
     if(!$('#cashierRoot')) return;
     refreshSmartSelect('cashierAccount', coll('accounts'), $('#cashierAccount')?.value || 'cash');
@@ -633,7 +949,7 @@ const App = (() => {
     const cart=getCart(); const i=cart.findIndex(x=>x.productId===productId && !x.custom && x.sellMode!=='unit');
     if(i>=0){ cart[i].qty=n(cart[i].qty)+n(qty); cart[i]=normalizeCartLine(cart[i]); }
     else cart.push(normalizeCartLine({id:uid('line'),productId:p.id,name:p.name,price:n(p.salePrice),cost:n(p.purchasePrice),qty:n(qty),custom:false,sellMode:'piece',unitLabel:'قطعة',unitMultiplier:1,stockQty:n(qty)}));
-    localStorage.setItem('cashierCart',JSON.stringify(cart)); if(source==='scan' || source==='camera') beepBarcode(); toast('تم إضافة المنتج بنجاح إلى السلة'); renderCashier();
+    localStorage.setItem(localKey('cashierCart'),JSON.stringify(cart)); if(source==='scan' || source==='camera') beepBarcode(); toast('تم إضافة المنتج بنجاح إلى السلة'); renderCashier();
   }
   function addBarcodeToCashier(code, source='باركود'){ const now=Date.now(); if(state.scanLast.code===code && now-state.scanLast.time<1400) return; state.scanLast={code,time:now}; const p=coll('products').find(x=>String(x.barcode||'')===String(code)); if(p){addProductToCart(p.id,1,'scan');} else {toast('باركود غير مسجل: '+code,'warn')} }
   function renderCartLines(){
@@ -702,7 +1018,7 @@ const App = (() => {
     const chosenCustomer=customerId ? coll('customers').find(x=>String(x.id)===String(customerId)) : null;
     const invoice={id:uid('inv'),number:`INV-${Date.now().toString().slice(-7)}`,type:'sale',customerId,customerName:chosenCustomer?.name||typedCustomerName,phone:chosenCustomer?.phone||typedCustomerPhone,items:cart,total,paid,debt,profit:total-cost,cost,accountId:accId,date:nowIso(),createdAt:Date.now()};
     setItem('invoices',invoice,`حفظ فاتورة ${invoice.number}`); applyInvoiceEffects(invoice);
-    localStorage.removeItem('cashierCart'); const paidInput=$('#paidAmount'); if(paidInput){delete paidInput.dataset.manual; paidInput.value='0';} renderCashier(); toast(settings().autoPrintInvoice?'تم حفظ الفاتورة وسيتم الطباعة':'تم حفظ الفاتورة بدون طباعة'); if(settings().autoPrintInvoice) setTimeout(()=>printInvoice(invoice.id),300);
+    localStorage.removeItem(localKey('cashierCart')); const paidInput=$('#paidAmount'); if(paidInput){delete paidInput.dataset.manual; paidInput.value='0';} renderCashier(); toast(settings().autoPrintInvoice?'تم حفظ الفاتورة وسيتم الطباعة':'تم حفظ الفاتورة بدون طباعة'); if(settings().autoPrintInvoice) setTimeout(()=>printInvoice(invoice.id),300);
   }
   function openCustomLine(){ openModal('إضافة صنف بدون مخزون',`<div class="form-grid"><div class="field"><label>اسم الصنف</label><input class="input" id="clName"></div><div class="field"><label>السعر</label><input class="input" type="number" step="0.01" id="clPrice"></div><div class="field"><label>الكمية / الكسر</label><input class="input" type="number" step="0.001" id="clQty" value="1"></div></div>`,'إضافة',()=>{const cart=getCart(); cart.push({id:uid('line'),name:$('#clName').value||'صنف بدون مخزون',price:n($('#clPrice').value),qty:n($('#clQty').value),cost:0,custom:true,sellMode:'piece',unitLabel:'قطعة',unitMultiplier:1}); setCart(cart); toast('تمت إضافة الصنف')}) }
   async function waitForIce(pc){
@@ -830,10 +1146,10 @@ const App = (() => {
   function sendProductViaRtc(productId){ return sendViaRtcPayload({productId}); }
   function createCashierSession(openModalAfter=false){
     state.cashierSession={id:uid('scan'),createdAt:Date.now(),mode:'local-rtc'};
-    localStorage.setItem('cashierSession',JSON.stringify(state.cashierSession)); updatePairInfo(); toast('تم فتح ربط الجوال'); if(openModalAfter) openPairCodeModal();
+    localStorage.setItem(localKey('cashierSession'),JSON.stringify(state.cashierSession)); updatePairInfo(); toast('تم فتح ربط الجوال'); if(openModalAfter) openPairCodeModal();
   }
   function pairUrl(){ return `${location.origin}${location.pathname.replace('cashier.html','mobile-scanner.html')}?company=${encodeURIComponent(companyKey)}`; }
-  function updatePairInfo(){try{state.cashierSession=JSON.parse(localStorage.getItem('cashierSession'))}catch(e){} }
+  function updatePairInfo(){try{state.cashierSession=JSON.parse(localStorage.getItem(localKey('cashierSession')))}catch(e){} }
   function copyPairLink(){ navigator.clipboard?.writeText(pairUrl()); toast('تم نسخ رابط صفحة الجوال') }
   async function openPairCodeModal(){
     if(!state.cashierSession) createCashierSession(false); updatePairInfo();
@@ -976,6 +1292,79 @@ const App = (() => {
   function renderEmployees(){ const root=$('#employeesTable'); if(!root) return; const rows=filtered(coll('employees'),['name','username','id']); root.innerHTML=rows.length?rows.map(e=>`<tr><td><b>${esc(e.name||'')}</b><small style="display:block;color:var(--muted)">${esc(e.id||'')}</small></td><td>${esc(e.username||'')}</td><td>${e.active===false?'<span class="badge red">موقوف</span>':'<span class="badge green">مفعل</span>'}</td><td>${e.lastLogin?new Date(e.lastLogin).toLocaleString('ar'):'—'}</td><td class="actions"><button class="mini-btn" data-action="editEmployee" data-id="${e.id}">تعديل</button><button class="mini-btn red" data-action="deleteEmployee" data-id="${e.id}">حذف</button></td></tr>`).join(''):`<tr><td colspan="5"><div class="empty">لا يوجد موظفين</div></td></tr>`; }
   function openEmployee(id=''){ const e=coll('employees').find(x=>x.id===id)||{id:'employee_'+String(Date.now()).slice(-4),name:'',username:'',active:true,permissions:{}}; const checks=permissionCatalog.map(([k,l])=>`<label class="perm-item"><input type="checkbox" data-perm="${k}" ${e.permissions?.[k]?'checked':''}>${l}</label>`).join(''); openModal(id?'تعديل موظف':'إضافة موظف',`<div class="form-grid"><div class="field"><label>الاسم</label><input class="input" id="empName" value="${esc(e.name||'')}"></div><div class="field"><label>اسم المستخدم</label><input class="input" id="empUsername" value="${esc(e.username||'')}"></div><div class="field"><label>كلمة المرور ${id?'(اتركها فارغة بدون تغيير)':''}</label><input class="input" type="password" id="empPassword"></div><div class="field"><label>رقم الموظف</label><input class="input" id="empId" value="${esc(e.id||'')}"></div><div class="field"><label>حالة الحساب</label><select id="empActive"><option value="true" ${e.active!==false?'selected':''}>مفعل</option><option value="false" ${e.active===false?'selected':''}>موقوف</option></select></div><div class="field full"><label>الصلاحيات</label><div class="perm-grid">${checks}</div></div></div>`,'حفظ الموظف',async(box)=>{const empId=$('#empId').value.trim(); if(!empId||!$('#empUsername').value.trim()){toast('أدخل رقم الموظف واسم المستخدم','bad');return false} const old=coll('employees').find(x=>x.id===empId)||e; const salt=old.passwordSalt || (companyKey+'_'+empId+'_'+Date.now()); const pass=$('#empPassword').value; const permissions={}; box.querySelectorAll('[data-perm]').forEach(ch=>permissions[ch.dataset.perm]=ch.checked); const item={...old,id:empId,name:$('#empName').value.trim(),username:$('#empUsername').value.trim(),active:$('#empActive').value==='true',permissions,passwordSalt:salt,createdAt:old.createdAt||Date.now(),updatedAt:Date.now(),lastLogin:old.lastLogin||null}; if(pass) item.passwordHash=await sha256(pass+salt); setItem('employees',item,`${id?'تعديل':'إضافة'} موظف ${item.name}`); localStorage.setItem('oscarEmployees_'+companyKey, JSON.stringify(coll('employees'))); toast('تم حفظ الموظف'); }); }
   function deleteEmployee(id){ if(!confirm('تأكيد حذف الموظف؟')) return; deleteItem('employees',id,'حذف موظف'); localStorage.setItem('oscarEmployees_'+companyKey, JSON.stringify(coll('employees'))); toast('تم حذف الموظف'); }
+  async function verifySecret(record, pass){
+    if(!record || !pass) return false;
+    if(record.passwordHash && record.passwordSalt){ return await sha256(pass+record.passwordSalt) === record.passwordHash; }
+    if(record.passwordHash){ return (await sha256(pass)) === record.passwordHash || String(record.passwordHash)===String(pass); }
+    const plain = record.password ?? record.pass ?? record.adminPassword ?? record.plainPassword;
+    return plain!==undefined && String(plain)===String(pass);
+  }
+  async function adminRecordForVerification(){
+    let admin=null;
+    if(navigator.onLine){
+      try{
+        await pickDatabaseURL(false);
+        const company=await rtdbGet(`companies/${safePathPart(companyKey)}`).catch(()=>null);
+        admin=normalizeCompanyAdmin(company?.admin);
+        if(admin){
+          const cached=cachedCompanyAccess() || {companyKey};
+          cached.admin=admin; cached.updatedAt=Date.now();
+          localStorage.setItem('oscarCompany_'+companyKey,JSON.stringify(cached));
+        }
+      }catch(e){ console.warn('admin verification cloud skipped', e); }
+    }
+    if(!admin) admin=normalizeCompanyAdmin(cachedCompanyAccess()?.admin);
+    return admin;
+  }
+  async function verifyManagerCredentials(username, pass){
+    if(session?.role!=='admin') return {ok:false,msg:'حذف جميع البيانات مسموح للمدير فقط'};
+    const admin=await adminRecordForVerification();
+    if(!admin || !admin.username) return {ok:false,msg:'لا توجد بيانات مدير محفوظة للتحقق. افتح الإنترنت مرة أو غيّر كلمة المدير من صفحة الأدمن'};
+    if(String(username||'').trim()!==String(admin.username||'').trim()) return {ok:false,msg:'اسم مستخدم المدير غير صحيح'};
+    const ok=await verifySecret(admin, pass);
+    return ok ? {ok:true} : {ok:false,msg:'كلمة مرور المدير غير صحيحة'};
+  }
+  function removeCompanyLocalSideData(){
+    const suffix='_'+companyLocalPart;
+    const keep=new Set([storeKey()]);
+    for(let i=localStorage.length-1;i>=0;i--){
+      const k=localStorage.key(i);
+      if(!k || keep.has(k)) continue;
+      if(k.endsWith(suffix) || k===storeKey()+'_lastSaved' || k==='oscarEmployees_'+companyKey){
+        if(k!=='oscarCompany_'+companyKey) localStorage.removeItem(k);
+      }
+    }
+  }
+  function openClearAllDataModal(){
+    if(session?.role!=='admin'){ toast('حذف جميع البيانات متاح للمدير فقط','bad'); return; }
+    openModal('حذف جميع البيانات',`<div class="card" style="background:#fff7ed;border-color:#fed7aa;margin-bottom:12px"><b style="color:#9a3412">تحذير نهائي</b><p style="margin:8px 0 0;color:#7c2d12;line-height:1.8">سيتم حذف بيانات هذه الشركة فقط من هذا الجهاز ومن Firebase عند توفر الإنترنت. لن يتم حذف مفتاح الشركة نفسه ولا حساب المدير.</p></div><div class="form-grid"><div class="field"><label>اسم مستخدم المدير</label><input class="input" id="clearAdminUser" autocomplete="off"></div><div class="field"><label>كلمة مرور المدير</label><input class="input" id="clearAdminPass" type="password" autocomplete="new-password"></div><div class="field full"><label>اكتب كلمة حذف للتأكيد</label><input class="input" id="clearConfirmText" placeholder="حذف" autocomplete="off"></div></div>`,'حذف جميع البيانات',async(box)=>{
+      const username=box.querySelector('#clearAdminUser')?.value.trim()||'';
+      const pass=box.querySelector('#clearAdminPass')?.value||'';
+      const confirmText=box.querySelector('#clearConfirmText')?.value.trim()||'';
+      if(confirmText!=='حذف'){ toast('اكتب كلمة حذف للتأكيد','bad'); return false; }
+      const verified=await verifyManagerCredentials(username,pass);
+      if(!verified.ok){ toast(verified.msg||'بيانات المدير غير صحيحة','bad'); return false; }
+      const ts=Date.now();
+      const keepSettings={...settings(),id:'main',updatedAt:ts};
+      const clearJob={_qid:uid('sync'),op:'clearCompany',companyKey,ts,by:session?.username||session?.userId||'admin'};
+      state.store=defaultStore();
+      state.store.settings=[keepSettings];
+      state.store._pendingSync=[clearJob];
+      state.store._deleted={};
+      state.store._lastLocalChange=ts;
+      removeCompanyLocalSideData();
+      localStorage.setItem(localKey('lastCompanyClearTs'),String(ts));
+      localStorage.removeItem(localKey('snapshotPushed'));
+      state.didSnapshotPush=false;
+      saveStore(false);
+      updateStatus();
+      scheduleRender(true);
+      autoSync();
+      toast(navigator.onLine?'تم حذف البيانات محلياً وجاري حذفها من Firebase':'تم حذف البيانات محلياً، وسيتم حذفها من Firebase عند عودة الإنترنت','warn');
+      return true;
+    });
+  }
+
   function renderSettings(){ const s=settings(); const name=$('#setStoreName'); if(!name) return; name.value=s.storeName||'أوسكار'; $('#setLowStock').value=s.lowStock||5; $('#setCurrency').value=s.currency||'₪'; $('#setPrintWidth').value=s.printWidth||'58mm'; const ap=$('#setAutoPrintInvoice'); if(ap) ap.value=String(!!s.autoPrintInvoice); }
   function saveSettings(){ const s={...settings(),id:'main',storeName:$('#setStoreName').value.trim()||'أوسكار',lowStock:n($('#setLowStock').value),currency:$('#setCurrency').value||'₪',printWidth:$('#setPrintWidth').value||'58mm',autoPrintInvoice:$('#setAutoPrintInvoice')?.value==='true',updatedAt:Date.now()}; state.store.settings=[s]; queue('set','settings','main',s,false); saveStore(); applyStoreName(); autoSync(); toast('تم حفظ الإعدادات'); }
 

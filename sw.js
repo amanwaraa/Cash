@@ -1,4 +1,4 @@
-const CACHE_NAME = 'oscar-v6.5.0-strict-company-login';
+const CACHE_NAME = 'oscar-pwa-v6-6.4.13-local-first-delete-edit';
 const PRECACHE = [
   './',
   'index.html',
@@ -18,7 +18,6 @@ const PRECACHE = [
   'mobile-scanner.html',
   'employees.html',
   'settings.html',
-  'admin.html',
   'manifest.json',
   'sw.js',
   'README.md',
