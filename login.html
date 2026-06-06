@@ -419,6 +419,64 @@ body{margin:0;background:linear-gradient(160deg,#eaf4ff,#f8fafc);font-family:'Ca
   }
 }
 
+
+/* توسيع واجهة اللابتوب: المحتوى والهيدر يأخذان العرض الكامل المتاح حتى القائمة الجانبية */
+@media(min-width:901px){
+  :root{
+    --desktop-sidebar-width:300px;
+    --desktop-gap:10px;
+  }
+  .sidebar{
+    right:0!important;
+    width:var(--desktop-sidebar-width)!important;
+    max-width:var(--desktop-sidebar-width)!important;
+  }
+  .main{
+    width:calc(100vw - var(--desktop-sidebar-width) - var(--desktop-gap))!important;
+    max-width:none!important;
+    margin-right:calc(var(--desktop-sidebar-width) + var(--desktop-gap))!important;
+    margin-left:0!important;
+    padding:10px 10px 110px 10px!important;
+  }
+  .top-card,
+  .page-head,
+  #pageRoot,
+  .card,
+  .two-col,
+  .stats-grid,
+  .table-wrap{
+    max-width:none!important;
+  }
+  .top-card{
+    width:100%!important;
+    margin:0 0 14px 0!important;
+  }
+  .page-head{
+    margin:14px 2px!important;
+  }
+  #pageRoot{
+    width:100%!important;
+  }
+  .two-col{
+    grid-template-columns:minmax(0,1fr) minmax(360px,.92fr)!important;
+    gap:14px!important;
+  }
+  .products-grid{
+    grid-template-columns:repeat(auto-fill,minmax(170px,1fr))!important;
+  }
+  .bottom-nav{
+    right:calc(var(--desktop-sidebar-width) + var(--desktop-gap) + 12px)!important;
+    left:12px!important;
+    max-width:none!important;
+    width:auto!important;
+  }
+}
+@media(min-width:1200px){
+  .two-col{
+    grid-template-columns:minmax(0,1.08fr) minmax(400px,.92fr)!important;
+  }
+}
+
 </style></head>
 <body><div id="toast" class="toast"></div><main class="login-shell"><section class="login-card"><div class="brand" style="margin-bottom:18px"><div class="brand-logo">O</div><div><h1>أوسكار</h1><p>تسجيل الدخول</p></div></div><form id="loginForm" autocomplete="off"><div class="field"><label>مفتاح الشركة</label><input class="input" id="companyKey" name="company_key_manual" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text"></div><div class="field"><label>اسم المستخدم</label><input class="input" id="username" name="user_manual" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false"></div><div class="field"><label>كلمة المرور</label><input class="input" id="password" name="pass_manual" type="password" autocomplete="new-password"></div><button class="primary-btn" id="loginBtn" type="submit">تسجيل الدخول</button></form></section></main><script>
 const firebaseConfig = {apiKey:"AIzaSyABeNXngGQW6Vd8tH5O1KP_dG_xYsLUjm0",authDomain:"anwar-e5aca.firebaseapp.com",projectId:"anwar-e5aca",databaseURL:"https://anwar-e5aca-default-rtdb.southamerica-east1.firebasedatabase.app",storageBucket:"anwar-e5aca.firebasestorage.app",messagingSenderId:"867794060996",appId:"1:867794060996:web:6ce6feeb35684972856b91",measurementId:"G-W124E3585D"};

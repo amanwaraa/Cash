@@ -459,6 +459,64 @@
   }
 }
 
+
+/* توسيع واجهة اللابتوب: المحتوى والهيدر يأخذان العرض الكامل المتاح حتى القائمة الجانبية */
+@media(min-width:901px){
+  :root{
+    --desktop-sidebar-width:300px;
+    --desktop-gap:10px;
+  }
+  .sidebar{
+    right:0!important;
+    width:var(--desktop-sidebar-width)!important;
+    max-width:var(--desktop-sidebar-width)!important;
+  }
+  .main{
+    width:calc(100vw - var(--desktop-sidebar-width) - var(--desktop-gap))!important;
+    max-width:none!important;
+    margin-right:calc(var(--desktop-sidebar-width) + var(--desktop-gap))!important;
+    margin-left:0!important;
+    padding:10px 10px 110px 10px!important;
+  }
+  .top-card,
+  .page-head,
+  #pageRoot,
+  .card,
+  .two-col,
+  .stats-grid,
+  .table-wrap{
+    max-width:none!important;
+  }
+  .top-card{
+    width:100%!important;
+    margin:0 0 14px 0!important;
+  }
+  .page-head{
+    margin:14px 2px!important;
+  }
+  #pageRoot{
+    width:100%!important;
+  }
+  .two-col{
+    grid-template-columns:minmax(0,1fr) minmax(360px,.92fr)!important;
+    gap:14px!important;
+  }
+  .products-grid{
+    grid-template-columns:repeat(auto-fill,minmax(170px,1fr))!important;
+  }
+  .bottom-nav{
+    right:calc(var(--desktop-sidebar-width) + var(--desktop-gap) + 12px)!important;
+    left:12px!important;
+    max-width:none!important;
+    width:auto!important;
+  }
+}
+@media(min-width:1200px){
+  .two-col{
+    grid-template-columns:minmax(0,1.08fr) minmax(400px,.92fr)!important;
+  }
+}
+
 </style>
 </head>
 <body data-page="employees">
