@@ -530,6 +530,99 @@
   }
 }
 
+
+/* زر إضافة&nbsp;صنف&nbsp;/&nbsp;طعم&nbsp;/&nbsp;حجم بسطر واحد */
+.product-add-variant-btn{
+  white-space:nowrap!important;
+  width:100%!important;
+  min-width:max-content!important;
+}
+@media(max-width:560px){
+  .product-add-variant-btn{
+    min-width:0!important;
+    font-size:13px!important;
+    padding-inline:10px!important;
+  }
+}
+
+
+/* تحسينات سرعة العرض: مؤشر مزامنة غير حاجب */
+.sync-dot-btn.syncing::after{
+  content:'';
+  position:absolute;
+  inset:5px;
+  border-radius:999px;
+  border:2px solid rgba(37,99,235,.22);
+  border-top-color:var(--primary);
+  animation:spin .75s linear infinite;
+  pointer-events:none;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+
+/* شريط مزامنة النسخة الاحتياطية - يظهر فقط بعد الاسترداد */
+.backup-sync-progress{
+  position:fixed;
+  left:16px;
+  right:16px;
+  bottom:86px;
+  z-index:260;
+  max-width:620px;
+  margin:0 auto;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:18px;
+  box-shadow:var(--shadow);
+  padding:12px;
+  display:grid;
+  gap:8px;
+  direction:rtl;
+}
+.backup-sync-progress.hidden{display:none}
+.backup-sync-progress .backup-sync-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  font-weight:900;
+  color:var(--ink);
+  font-size:13px;
+}
+.backup-sync-progress .backup-sync-track{
+  height:9px;
+  border-radius:999px;
+  background:rgba(148,163,184,.20);
+  overflow:hidden;
+}
+.backup-sync-progress .backup-sync-fill{
+  height:100%;
+  width:0%;
+  border-radius:999px;
+  background:var(--primary);
+  transition:.18s width;
+}
+.backup-sync-progress small{
+  color:var(--muted);
+  font-weight:800;
+}
+
+
+.backup-sync-progress .backup-sync-close{
+  border:0;
+  background:rgba(148,163,184,.16);
+  color:var(--ink);
+  width:30px;
+  height:30px;
+  border-radius:999px;
+  font-weight:900;
+  display:grid;
+  place-items:center;
+}
+.backup-sync-progress .backup-sync-close:hover{
+  background:rgba(239,68,68,.12);
+  color:#b91c1c;
+}
+
 </style>
 </head>
 <body data-page="finance">
@@ -581,7 +674,7 @@ const App = (() => {
     settings: [{id:'main',storeName:'أوسكار',currency:'₪',lowStock:5,printWidth:'58mm',autoPrintInvoice:false}],
     _pendingSync: [], _deleted: {}, _lastLocalChange: Date.now()
   });
-  const state = {store:null,page:document.body.dataset.page||'dashboard',online:navigator.onLine,db:null,auth:null,user:null,firebaseReady:false,unsubs:[],deferredPrompt:null,activityShown:5,scannerStream:null,scanLast:{code:'',time:0},cashierSession:null,bc:null,rtcPc:null,rtcChannel:null,localBridge:null,localBridgeReady:false,bridgeTried:false,didEnsureRemote:false,didSnapshotPush:localStorage.getItem(localKey('snapshotPushed'))==='1'};
+  const state = {store:null,page:document.body.dataset.page||'dashboard',online:navigator.onLine,db:null,auth:null,user:null,firebaseReady:false,unsubs:[],deferredPrompt:null,activityShown:5,scannerStream:null,scanLast:{code:'',time:0},cashierSession:null,bc:null,rtcPc:null,rtcChannel:null,localBridge:null,localBridgeReady:false,bridgeTried:false,didEnsureRemote:false,didSnapshotPush:localStorage.getItem(localKey('snapshotPushed'))==='1',backupSync:null};
   const $ = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => [...r.querySelectorAll(s)];
   const uid = (p='id') => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;
@@ -866,6 +959,153 @@ const App = (() => {
     state.store._pendingSync.push({_qid:uid('sync'),op,collectionName,id:sid,data,ts:Date.now()});
     state.store._lastLocalChange=Date.now(); if(renderAfter) saveStore();
   }
+
+  function backupSyncKey(){ return localKey('backupSync'); }
+  function backupSyncPanelKey(){ return localKey('backupSyncPanelOpen'); }
+  function isBackupSyncPanelOpen(){ return localStorage.getItem(backupSyncPanelKey())==='1'; }
+  function openBackupSyncPanel(){
+    const sync=getBackupSyncState();
+    if(!sync || !n(sync.total)){ toast('لا توجد مزامنة نسخة احتياطية حالياً','warn'); return false; }
+    localStorage.setItem(backupSyncPanelKey(),'1');
+    updateBackupProgressUI();
+    return true;
+  }
+  function closeBackupSyncPanel(){
+    localStorage.removeItem(backupSyncPanelKey());
+    const el=$('#backupSyncProgress'); if(el) el.classList.add('hidden');
+  }
+  function getBackupSyncState(){
+    if(state.backupSync) return state.backupSync;
+    try{ state.backupSync=JSON.parse(localStorage.getItem(backupSyncKey())||'null'); }catch(e){ state.backupSync=null; }
+    return state.backupSync;
+  }
+  function setBackupSyncState(v){
+    state.backupSync=v;
+    if(v) localStorage.setItem(backupSyncKey(),JSON.stringify(v));
+    else { localStorage.removeItem(backupSyncKey()); localStorage.removeItem(backupSyncPanelKey()); }
+    updateBackupProgressUI();
+    updateStatus();
+  }
+  function isBackupSyncJob(job){ return !!job && (job.source==='backupImport' || job.backupImport===true); }
+  function backupSyncPendingCount(){
+    return (state.store?._pendingSync||[]).filter(isBackupSyncJob).length;
+  }
+  function backupSyncPercent(sync=getBackupSyncState()){
+    if(!sync || !n(sync.total)) return 0;
+    return Math.max(0, Math.min(100, Math.round(n(sync.done)*100/n(sync.total))));
+  }
+  function updateBackupProgressUI(){
+    const sync=getBackupSyncState();
+    const active=sync && n(sync.total)>0 && (sync.active || backupSyncPendingCount()>0 || backupSyncPercent(sync)<100);
+    const shouldShow=active && isBackupSyncPanelOpen();
+    let el=$('#backupSyncProgress');
+    if(!shouldShow){
+      if(el) el.classList.add('hidden');
+      return;
+    }
+    if(!el){
+      el=document.createElement('div');
+      el.id='backupSyncProgress';
+      el.className='backup-sync-progress';
+      el.innerHTML=`<div class="backup-sync-top"><span id="backupSyncTitle">مزامنة النسخة الاحتياطية</span><b id="backupSyncPct">0%</b><button class="backup-sync-close" type="button" title="إغلاق">×</button></div><div class="backup-sync-track"><div id="backupSyncFill" class="backup-sync-fill"></div></div><small id="backupSyncText">جاري التجهيز...</small>`;
+      document.body.appendChild(el);
+      el.querySelector('.backup-sync-close')?.addEventListener('click',closeBackupSyncPanel);
+    }
+    el.classList.remove('hidden');
+    const pct=backupSyncPercent(sync);
+    const pending=backupSyncPendingCount();
+    const total=n(sync.total), done=Math.min(total,n(sync.done));
+    const status=sync.status==='offline'?'محفوظة محلياً وستزامن عند رجوع الإنترنت':sync.status==='checking'?'جاري تحديد العناصر غير الموجودة على Firebase':'جاري رفع العناصر غير الموجودة';
+    setText('backupSyncPct',pct+'%');
+    setText('backupSyncText',`${done} / ${total} عنصر — المتبقي ${pending} — ${status}`);
+    const fill=$('#backupSyncFill'); if(fill) fill.style.width=pct+'%';
+  }
+  function noteBackupSyncProgress(count=1){
+    const sync=getBackupSyncState(); if(!sync) return;
+    sync.done=Math.min(n(sync.total), n(sync.done)+n(count));
+    sync.updatedAt=Date.now();
+    if(sync.done>=sync.total && backupSyncPendingCount()===0){
+      sync.done=sync.total; sync.status='complete'; sync.active=false;
+      setBackupSyncState(sync);
+      setTimeout(()=>{ const current=getBackupSyncState(); if(current && current.status==='complete') setBackupSyncState(null); },2600);
+    }else setBackupSyncState(sync);
+  }
+  function normalizeImportedStore(raw){
+    const d=defaultStore();
+    const out={...d,_pendingSync:[],_deleted:(raw && typeof raw==='object' && raw._deleted && typeof raw._deleted==='object')?raw._deleted:{},_lastLocalChange:Date.now()};
+    collections.forEach(name=>{
+      const val=raw?.[name];
+      if(Array.isArray(val)) out[name]=val.filter(Boolean).map(x=>({...x,id:String(x.id||uid(name.slice(0,3))),updatedAt:Number(x.updatedAt||x.createdAt||Date.now())}));
+      else if(val && typeof val==='object') out[name]=rowsFromVal(val).map(x=>({...x,id:String(x.id||uid(name.slice(0,3))),updatedAt:Number(x.updatedAt||x.createdAt||Date.now())}));
+      else out[name]=Array.isArray(d[name])?d[name]:[];
+    });
+    if(!out.accounts?.length) out.accounts=d.accounts;
+    if(!out.settings?.length) out.settings=d.settings;
+    return out;
+  }
+  function collectBackupCandidates(imported){
+    const list=[];
+    collections.forEach(name=>{
+      (imported[name]||[]).forEach(item=>{
+        const clean=normalizeItemForRemote(item);
+        if(clean && clean.id && !String(clean.id).startsWith('__')) list.push({collectionName:name,id:String(clean.id),data:clean});
+      });
+    });
+    return list;
+  }
+  function enqueueBackupSyncJobs(items){
+    if(!state.store._pendingSync) state.store._pendingSync=[];
+    const now=Date.now();
+    items.forEach(({collectionName,id,data})=>{
+      state.store._pendingSync=state.store._pendingSync.filter(j=>!((j.collectionName||j.collection)===collectionName && String(j.id||'')===String(id) && j.op==='set'));
+      state.store._pendingSync.push({_qid:uid('bsync'),op:'set',collectionName,id:String(id),data,ts:now,source:'backupImport'});
+    });
+    state.store._lastLocalChange=Date.now();
+    saveStore(false);
+    updateStatus();
+  }
+  async function prepareBackupSyncQueue(imported){
+    const candidates=collectBackupCandidates(imported);
+    if(!candidates.length){ setBackupSyncState(null); return 0; }
+    const started={active:true,total:candidates.length,done:0,queued:0,status:navigator.onLine?'checking':'offline',startedAt:Date.now(),updatedAt:Date.now()};
+    setBackupSyncState(started);
+    let toQueue=candidates;
+    if(navigator.onLine){
+      try{
+        await pickDatabaseURL(false);
+        if(state.firebaseReady){
+          const byCollection=new Map();
+          candidates.forEach(x=>{ if(!byCollection.has(x.collectionName)) byCollection.set(x.collectionName,[]); byCollection.get(x.collectionName).push(x); });
+          toQueue=[];
+          for(const [name,rows] of byCollection.entries()){
+            const remoteRows=rowsFromVal(await rtdbGet(collectionPath(name)).catch(()=>null));
+            const remoteById=new Map(remoteRows.map(x=>[String(x.id),x]));
+            rows.forEach(x=>{
+              const remote=remoteById.get(String(x.id));
+              if(!remote || remoteTs(x.data)>remoteTs(remote)) toQueue.push(x);
+            });
+            const sync=getBackupSyncState()||started;
+            sync.done=Math.min(candidates.length, n(sync.done)+rows.length);
+            sync.updatedAt=Date.now();
+            setBackupSyncState(sync);
+            await new Promise(r=>setTimeout(r,0));
+          }
+        }
+      }catch(e){
+        console.warn('backup import precheck failed, queued all candidates',e);
+        toQueue=candidates;
+      }
+    }
+    if(!toQueue.length){
+      setBackupSyncState({active:false,total:1,done:1,queued:0,status:'complete',startedAt:Date.now(),updatedAt:Date.now()});
+      setTimeout(()=>setBackupSyncState(null),2200);
+      return 0;
+    }
+    enqueueBackupSyncJobs(toQueue);
+    setBackupSyncState({active:true,total:toQueue.length,done:0,queued:toQueue.length,status:navigator.onLine?'syncing':'offline',startedAt:Date.now(),updatedAt:Date.now()});
+    return toQueue.length;
+  }
+
   function hasPendingOp(collectionName,id,op=''){
     const sid=String(id||'');
     return Array.isArray(state.store?._pendingSync) && state.store._pendingSync.some(j=>{
@@ -1034,27 +1274,23 @@ const App = (() => {
     return changed;
   }
   async function refreshCompanyAccess(){
-    // فحص المفتاح صار صامتاً: لا يخرج المستخدم أثناء التنقل أو المزامنة.
-    // الهدف فقط تحديث بيانات الاسم/الصلاحيات إن وُجدت، بدون مراجعة مدة الاشتراك أو حذف الجلسة.
+    // فحص خفيف للمفتاح: لا نسحب عقدة الشركة كاملة حتى لا نحمّل المنتجات والفواتير أثناء فتح الصفحة.
     if(!session || state.page==='scanner') return true;
     if(!navigator.onLine || !state.firebaseReady) return true;
     try{
-      const company=await rtdbGet(`companies/${safePathPart(companyKey)}`).catch(()=>null);
-      if(!company || typeof company!=='object') return true;
-      const admin=normalizeCompanyAdmin(company.admin);
-      const employees=objectRows(company.employees || {});
+      const base=`companies/${safePathPart(companyKey)}`;
+      const [adminRaw, employeesRaw, companyName, storeName, active, subscriptionEnd] = await Promise.all([
+        rtdbGet(`${base}/admin`).catch(()=>null),
+        rtdbGet(`${base}/employees`).catch(()=>null),
+        rtdbGet(`${base}/companyName`).catch(()=>''),
+        rtdbGet(`${base}/storeName`).catch(()=>''),
+        rtdbGet(`${base}/active`).catch(()=>true),
+        rtdbGet(`${base}/subscriptionEnd`).catch(()=>'2099-12-31')
+      ]);
+      const admin=normalizeCompanyAdmin(adminRaw);
+      const employees=objectRows(employeesRaw || {});
       const oldAccess=cachedCompanyAccess() || {companyKey};
-      const access={
-        ...oldAccess,
-        companyKey,
-        companyName:company.companyName||company.storeName||oldAccess.companyName||'',
-        storeName:company.storeName||company.companyName||oldAccess.storeName||'',
-        active:company.active!==false,
-        subscriptionEnd:company.subscriptionEnd||oldAccess.subscriptionEnd||'2099-12-31',
-        admin:admin||oldAccess.admin||null,
-        _fromCloud:true,
-        updatedAt:Date.now()
-      };
+      const access={...oldAccess,companyKey,companyName:companyName||storeName||oldAccess.companyName||'',storeName:storeName||companyName||oldAccess.storeName||'',active:active!==false,subscriptionEnd:subscriptionEnd||oldAccess.subscriptionEnd||'2099-12-31',admin:admin||oldAccess.admin||null,_fromCloud:true,updatedAt:Date.now()};
       localStorage.setItem('oscarCompany_'+companyKey,JSON.stringify(access));
       if(employees.length) localStorage.setItem('oscarEmployees_'+companyKey,JSON.stringify(employees));
       if(session.role==='employee'){
@@ -1074,21 +1310,17 @@ const App = (() => {
         saveStore(false);
       }
     }catch(e){
-      console.warn('company access refresh skipped', e);
+      console.warn('company access lightweight refresh skipped', e);
     }
     return true;
   }
   async function ensureRemoteBase(){
     if(state.didEnsureRemote) return;
-    const path=`companies/${safePathPart(companyKey)}`;
-    const company=await rtdbGet(path).catch(()=>null);
-    if(!company){
-      // لا يتم تسجيل الخروج إذا لم تظهر بيانات المفتاح أثناء المزامنة؛ نكمل محلياً ونترك الرفع ينشئ المسار عند الحاجة.
-      state.didEnsureRemote=true;
-      return;
-    }else if(!company.data?.settings){
-      await rtdbSet(`companies/${safePathPart(companyKey)}/data/settings/main`,{...settings(),id:'main',updatedAt:Date.now(),companyKey});
-    }
+    // لا نسحب companies/{key} كاملاً. فقط نضمن وجود الإعدادات الأساسية إن لم تكن موجودة.
+    try{
+      const hasSettings=await rtdbGet(`companies/${safePathPart(companyKey)}/data/settings/main`).catch(()=>null);
+      if(!hasSettings) await rtdbSet(`companies/${safePathPart(companyKey)}/data/settings/main`,{...settings(),id:'main',updatedAt:Date.now(),companyKey});
+    }catch(e){ console.warn('ensure remote settings skipped', e); }
     state.didEnsureRemote=true;
   }
   async function pushLocalSnapshot(){
@@ -1155,26 +1387,73 @@ const App = (() => {
     }catch(e){ console.warn('remote deletes skipped', e); return false; }
   }
 
+  function syncPriorityCollections(){
+    const byPage={
+      dashboard:['activity','notifications','settings','accounts','invoices','products','customers'],
+      cashier:['products','customers','accounts','settings','scannerEvents','scannerSessions','invoices','activity','notifications'],
+      products:['products','settings','suppliers','accounts','activity'],
+      customers:['customers','accounts','invoices','activity'],
+      invoices:['invoices','customers','accounts','products','activity'],
+      accounts:['accounts','customers','suppliers','invoices','expenses','activity'],
+      finance:['invoices','expenses','accounts','customers','suppliers','activity'],
+      analytics:['invoices','expenses','products','accounts','activity'],
+      expenses:['expenses','accounts','activity'],
+      suppliers:['suppliers','accounts','products','activity'],
+      inventory:['inventory','products','activity'],
+      notifications:['notifications','activity'],
+      employees:['employees','settings'],
+      settings:['settings','employees']
+    };
+    const first=byPage[state.page] || ['activity','notifications','settings','products','customers','accounts','invoices'];
+    return [...new Set(first.filter(x=>collections.includes(x)).concat(collections))];
+  }
+  function markProgressiveLoaded(name,count){
+    state.lastPulledCollection=name;
+    state.lastPulledCount=count;
+    updateStatus();
+  }
+  async function pullOneRemoteCollection(name, forceRender=true){
+    const rows=rowsFromVal(await rtdbGet(collectionPath(name)));
+    const beforeCount=coll(name).length;
+    mergeRemote(name, rows);
+    const changed=rows.length || coll(name).length!==beforeCount;
+    saveStore(false);
+    if(name==='scannerEvents') processScannerEvents();
+    markProgressiveLoaded(name, rows.length);
+    if(forceRender){
+      // اعرض فوراً ما تم تحميله بدون انتظار باقي الجداول.
+      scheduleRender(true);
+      await new Promise(r=>setTimeout(r,0));
+    }
+    return {name,count:rows.length,changed};
+  }
   async function pullAllRemote(){
     if(!state.firebaseReady || !navigator.onLine) return;
-    await pullRemoteDeletes();
+    await pullRemoteDeletes().then(changed=>{ if(changed){ saveStore(false); scheduleRender(true); } }).catch(e=>console.warn('pull deletes skipped',e));
     let hadError=false;
-    const priority = state.page==='cashier'
-      ? ['scannerEvents','products','customers','accounts','settings','scannerSessions','invoices','activity','inventory','notifications','suppliers','expenses','employees']
-      : ['settings','products','customers','accounts','invoices','scannerEvents','scannerSessions','activity','inventory','notifications','suppliers','expenses','employees'];
-    const ordered=[...new Set(priority.filter(x=>collections.includes(x)).concat(collections))];
-    for(const name of ordered){
-      try{
-        const rows=rowsFromVal(await rtdbGet(collectionPath(name)));
-        if(rows.length) mergeRemote(name, rows);
-        saveStore(false);
-        if(state.page==='cashier') processScannerEvents();
-        updateStatus();
-        scheduleRender();
-        await new Promise(r=>setTimeout(r,0));
-      }catch(e){hadError=true; console.warn('pull failed', name, e); state.syncError=e?.message||String(e); updateStatus();}
+    const ordered=syncPriorityCollections();
+
+    // حمّل أول جدولين بالأولوية مباشرة وبشكل متتابع حتى تظهر الصفحة الحالية بسرعة.
+    const immediate=ordered.slice(0,2);
+    for(const name of immediate){
+      try{ await pullOneRemoteCollection(name,true); }
+      catch(e){hadError=true; console.warn('priority pull failed', name, e); state.syncError=e?.message||String(e); updateStatus();}
     }
-    if(!hadError) state.syncError=''; updateStatus(); scheduleRender(true);
+
+    // ثم حمّل الباقي بتوازي محدود؛ كل جدول يخلص ينعرض فوراً.
+    const rest=ordered.slice(2);
+    let index=0;
+    const workers=Array.from({length:Math.min(3, rest.length)}, async()=>{
+      while(index<rest.length){
+        const name=rest[index++];
+        try{ await pullOneRemoteCollection(name,true); }
+        catch(e){hadError=true; console.warn('pull failed', name, e); state.syncError=e?.message||String(e); updateStatus();}
+      }
+    });
+    await Promise.all(workers);
+    if(!hadError) state.syncError='';
+    updateStatus();
+    scheduleRender(true);
   }
   async function syncQueue(){
     if(!state.store) return;
@@ -1196,7 +1475,7 @@ const App = (() => {
           done.push(job._qid || ('clearCompany'+ts)); state.syncError='';
           continue;
         }
-        if(!name || !id || !collections.includes(name)){ done.push(job._qid || (job.ts+id+name)); continue; }
+        if(!name || !id || !collections.includes(name)){ done.push(job._qid || (job.ts+id+name)); if(isBackupSyncJob(job)) noteBackupSyncProgress(1); continue; }
         if(job.op==='delete'){
           const ts=Number(job.ts||state.store._deleted?.[name]?.[id]||Date.now());
           await rtdbSet(`companies/${safePathPart(companyKey)}/deleted/${safePathPart(name)}/${safePathPart(id)}`,{ts,collectionName:name,id,by:session?.username||session?.userId||'',companyKey});
@@ -1204,10 +1483,19 @@ const App = (() => {
         }else{
           const localItem=coll(name).find(x=>String(x.id)===id);
           const data=normalizeItemForRemote(localItem || job.data || {id});
+          if(isBackupSyncJob(job)){
+            const remote=await rtdbGet(docPath(name,id)).catch(()=>null);
+            if(remote && remoteTs(remote)>=remoteTs(data)){
+              done.push(job._qid || (job.ts+id+name));
+              noteBackupSyncProgress(1);
+              state.syncError='';
+              continue;
+            }
+          }
           await rtdbSet(docPath(name,id), data);
           if(state.store._deleted?.[name]) delete state.store._deleted[name][id];
         }
-        done.push(job._qid || (job.ts+id+name)); state.syncError='';
+        done.push(job._qid || (job.ts+id+name)); if(isBackupSyncJob(job)) noteBackupSyncProgress(1); state.syncError='';
       }catch(e){console.warn('sync job failed', e, job); state.syncError=e?.message||String(e); break;}
     }
     if(done.length){
@@ -1232,19 +1520,22 @@ const App = (() => {
         }
         const ok=await pickDatabaseURL(false);
         if(!ok) throw new Error(state.syncError || 'Firebase غير جاهز');
-        await refreshCompanyAccess();
-        await ensureRemoteBase();
-        await importLegacyRemoteData();
-        const silentUi = !showToast && isInteractionLocked();
+
+        // ابدأ بتحميل البيانات وعرضها تدريجياً. لا ننتظر رفع snapshot كامل قبل العرض.
+        await Promise.allSettled([refreshCompanyAccess(), ensureRemoteBase(), importLegacyRemoteData()]);
         await syncQueue();
-        if(showToast || !state.didSnapshotPush) await pushLocalSnapshot();
-        if(!silentUi) await pullAllRemote();
-        else state.renderPending=true;
+        await pullAllRemote();
         await syncQueue();
+
+        // رفع snapshot كامل فقط عند الضغط اليدوي على زر المزامنة، وبعد أن يكون العرض تم.
+        if(showToast && !state.didSnapshotPush){
+          pushLocalSnapshot().catch(e=>console.warn('background snapshot push skipped',e));
+        }
+
         if(state.store?._pendingSync?.length){ throw new Error(state.syncError || 'بقيت عمليات معلقة لم ترفع'); }
         state.syncError='';
-        saveStore(false); updateStatus(); if(!silentUi) scheduleRender();
-        if(showToast) toast('تمت المزامنة بسرعة ورفع البيانات إلى Firebase');
+        saveStore(false); updateStatus(); scheduleRender(true);
+        if(showToast) toast('تمت المزامنة وعرض البيانات تدريجياً');
       }catch(e){
         state.syncError=e?.message||String(e);
         if(!state._retryingProbe && navigator.onLine){
@@ -1258,7 +1549,7 @@ const App = (() => {
     })();
     return state.syncPromise;
   }
-  async function initFirebase(){ await runFullSync(false); listenAll(); }
+  async function initFirebase(){ listenAll(); setTimeout(()=>runFullSync(false).catch(e=>{state.syncError=e?.message||String(e); updateStatus();}),180); }
   function autoSync(){
     saveStore(false);
     updateStatus();
@@ -1268,24 +1559,32 @@ const App = (() => {
   }
   function listenAll(){
     if(state.syncTimer) clearInterval(state.syncTimer);
-    state.syncTimer=setInterval(()=>{ if(navigator.onLine && !state.syncing){ runFullSync(false).catch(e=>{state.syncError=e?.message||String(e); updateStatus();}); } }, 3000);
+    state.syncTimer=setInterval(()=>{ if(navigator.onLine && !state.syncing && !document.hidden){ runFullSync(false).catch(e=>{state.syncError=e?.message||String(e); updateStatus();}); } }, 30000);
     listenCashierSession();
   }
   function updateStatus(){
     state.online=navigator.onLine; const dot=$('#netDot'), pend=$('#pendingCount'), btn=$('#syncBtn');
     const pending=state.store? state.store._pendingSync.length : 0;
+    const backupSync=getBackupSyncState?.();
+    const backupPending=backupSyncPendingCount?.() || 0;
+    const backupPct=backupSync ? backupSyncPercent(backupSync) : 0;
     if(dot) dot.classList.toggle('off',!state.online || !!state.syncError);
-    if(btn) btn.title = state.syncError ? ('فشل آخر تزامن: '+shortSyncError()) : (state.localBridgeReady?'جسر محلي متصل':(state.online?'متصل - اضغط للمزامنة':'بدون نت - محفوظ محلياً وسيزامن تلقائياً'));
-    if(pend){ pend.textContent = pending? String(pending) : ''; pend.classList.toggle('hidden', !pending); }
-    if(btn) btn.classList.toggle('syncing', !!state.syncing);
+    if(btn) btn.title = backupSync&&backupPending ? (`مزامنة النسخة الاحتياطية: ${backupPct}%`) : (state.syncError ? ('فشل آخر تزامن: '+shortSyncError()) : (state.localBridgeReady?'جسر محلي متصل':(state.online?'متصل - اضغط للمزامنة':'بدون نت - محفوظ محلياً وسيزامن تلقائياً')));
+    if(pend){
+      if(backupSync && (backupPending || backupPct<100)){ pend.textContent=backupPct+'%'; pend.classList.remove('hidden'); }
+      else { pend.textContent = pending? String(pending) : ''; pend.classList.toggle('hidden', !pending); }
+    }
+    if(btn) btn.classList.toggle('syncing', !!state.syncing || !!backupPending);
+    try{ updateBackupProgressUI(); }catch(e){}
   }
   function initUI(){
     document.documentElement.dataset.theme=localStorage.getItem('theme')||'light';
     $$('.nav-link').forEach(a=>{ if(a.dataset.page===state.page) a.classList.add('active') }); hideByPermissions(); applyStoreName(); initSmartSelects(document);
     $('#menuBtn')?.addEventListener('click',()=>{ if(matchMedia('(min-width:901px)').matches) return; toggleSide(true); }); $('#sideOverlay')?.addEventListener('click',()=>toggleSide(false)); $('#closeSide')?.addEventListener('click',()=>toggleSide(false));
-    $('#themeBtn')?.addEventListener('click',toggleTheme); $('#syncBtn')?.addEventListener('click',()=>runFullSync(true));
+    $('#themeBtn')?.addEventListener('click',toggleTheme); $('#syncBtn')?.addEventListener('click',()=>{ const sync=getBackupSyncState?.(); if(sync && (backupSyncPendingCount?.() || backupSyncPercent(sync)<100)){ openBackupSyncPanel(); runFullSync(false).catch(e=>{state.syncError=e?.message||String(e); updateStatus();}); } else runFullSync(true); });
     window.addEventListener('online',()=>{state.syncError=''; state.firebaseReady=false; updateStatus(); setTimeout(()=>runFullSync(false),250); toast('عاد الاتصال، سيتم رفع البيانات المحلية تلقائياً')});
     window.addEventListener('offline',()=>{state.syncError=''; updateStatus(); saveStore(false); toast('وضع بدون إنترنت: يمكنك البيع والإضافة والحذف محلياً','warn')});
+    document.addEventListener('visibilitychange',()=>{ if(!document.hidden && navigator.onLine && !state.syncing) setTimeout(()=>runFullSync(false).catch(e=>{state.syncError=e?.message||String(e); updateStatus();}),250); });
     window.addEventListener('beforeunload',()=>{try{if(state.store) localStorage.setItem(storeKey(), JSON.stringify(state.store));}catch(e){}});    if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(console.warn);
     document.addEventListener('click', handleGlobalClick);
     document.addEventListener('keydown', handleBarcodeScannerInput, true);
@@ -1703,7 +2002,17 @@ const App = (() => {
     toast(String(inv.status||'issued')==='draft'?'تم فتح الفاتورة المعلقة في الكاشير':'تم تجهيز الفاتورة للتعديل في الكاشير');
     setTimeout(()=>location.href='cashier.html?editInvoice='+encodeURIComponent(inv.id),220);
   }
-  function issueInvoice(id){ openEditInvoice(id); }
+  function issueInvoice(id){
+    const inv=coll('invoices').find(x=>String(x.id)===String(id));
+    if(!inv){ toast('الفاتورة غير موجودة','bad'); return; }
+    if(String(inv.status||'issued')!=='draft'){ toast('الفاتورة صادرة مسبقاً','warn'); return; }
+    if(!confirm('إصدار الفاتورة المعلقة الآن؟ سيتم خصم المخزون وتحديث الحسابات والديون مباشرة.')) return;
+    const issued={...inv,status:'issued',updatedAt:Date.now()};
+    setItem('invoices',issued,`إصدار فاتورة معلقة ${issued.number}`);
+    applyInvoiceEffects(issued);
+    toast('تم إصدار الفاتورة وتحديث المخزون والحسابات');
+    scheduleRender(true);
+  }
   function applyExpenseEffect(ex){ if(ex && n(ex.amount)>0) addAccountMovement(ex.accountId||'cash','expense',-n(ex.amount),ex.name||'مصروف',{refType:'expense',refId:ex.id}); }
   function reverseExpenseEffect(ex){ const acc=coll('accounts').find(a=>String(a.id)===String(ex?.accountId||'cash')); if(acc && n(ex?.amount)>0){ acc.balance=n(acc.balance)+n(ex.amount); acc.movements=(acc.movements||[]).filter(m=>movementRefFilter(m,'expense',ex.id)); setItem('accounts',acc,`عكس مصروف ${ex.name||''}`); } }
   function deleteExpense(id){ const ex=coll('expenses').find(x=>String(x.id)===String(id)); if(!ex) return; if(!confirm('حذف المصروف؟ سيتم إرجاع المبلغ للحساب وتحديث الأرباح.')) return; reverseExpenseEffect(ex); deleteItem('expenses',id,'تم حذف المصروف'); toast('تم حذف المصروف وإعادة الحسابات'); render(); }
@@ -1932,8 +2241,8 @@ const App = (() => {
   function addBarcodeToCashier(code, source='باركود'){
     code=toLatinDigits(code).trim();
     const now=Date.now();
-    // لا تمنع تكرار نفس الباركود كعملية جديدة؛ فقط امنع التكرار اللحظي جداً الناتج عن نفس فريم الكاميرا.
-    if(state.scanLast.code===code && now-state.scanLast.time<450) return;
+    // مهلة 0.7 ثانية بين كل قراءة باركود لتجنب تكرار القراءة بالخطأ.
+    if(now-state.scanLast.time<700) return;
     state.scanLast={code,time:now};
     const hit=findBarcodeProduct(code);
     if(hit){ addProductToCart(hit.product.id,1,hit.isVariant?'variantBarcode':'scan',hit.variant?.id||'',hit.barcodeMode||'piece',code); }
@@ -2065,7 +2374,7 @@ const App = (() => {
     if(oldInvoice && String(oldInvoice.status||'issued')!=='draft') reverseInvoiceEffects(oldInvoice);
     setItem('invoices',invoice,oldInvoice?`تعديل فاتورة ${invoice.number}`:`حفظ فاتورة ${invoice.number}`);
     if(status!=='draft') applyInvoiceEffects(invoice);
-    localStorage.removeItem(localKey('cashierCart')); clearCashierEdit(); clearCashierDiscount(); const paidInput=$('#paidAmount'); if(paidInput){delete paidInput.dataset.manual; paidInput.value='0';} renderCashier();
+    resetCashierSale(); renderCashier();
     if(status==='draft') toast(oldInvoice?'تم تحديث الفاتورة المعلقة':'تم حفظ الفاتورة كمسودة معلقة');
     else toast(oldInvoice?'تم تعديل الفاتورة وإعادة الحسابات':'تم حفظ الفاتورة بدون طباعة');
     if(status!=='draft' && !oldInvoice && settings().autoPrintInvoice) setTimeout(()=>printInvoice(invoice.id),300);
@@ -2296,7 +2605,7 @@ const App = (() => {
     const p=coll('products').find(x=>String(x.id)===String(id))||{name:'',image:'',barcode:'',pieceBarcode:'',supplierId:'',accountId:'cash',mode:'piece',stock:0,purchasePrice:0,salePrice:0,category:'',unitName:'',piecesPerUnit:1,unitBuy:0,unitSale:0,purchasePaid:0,purchaseDebt:0,variants:[]};
     const variantsHtml=productVariants(p).map(v=>productFormVariantHtml(v)).join('') || '<div class="empty">لا يوجد أصناف إضافية بعد</div>';
     const barcodeSvg='<span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5v14M8 5v14M11 5v14M15 5v14M20 5v14"/><path d="M3 3h4M17 3h4M3 21h4M17 21h4"/></svg></span>';
-    const html=`<div class="form-grid"><div class="field"><label>اسم المنتج</label><input class="input" id="pName" value="${esc(p.name)}"></div><div class="field"><label>رابط صورة المنتج</label><input class="input" id="pImage" value="${esc(p.image)}"></div><div class="field"><label>${barcodeSvg} باركود الوحدة</label><div style="display:flex;gap:8px"><input class="input" id="productBarcode" value="${esc(p.barcode)}" placeholder="باركود الكرتونة / الوحدة"><button class="icon-btn" data-action="scanProductBarcode" type="button" title="مسح باركود الوحدة">${barcodeSvg}</button></div></div><div class="field"><label>${barcodeSvg} باركود القطعة</label><div style="display:flex;gap:8px"><input class="input" id="productPieceBarcode" value="${esc(p.pieceBarcode||'')}" placeholder="اتركه فارغاً ليأخذ باركود الوحدة"><button class="icon-btn" data-action="scanProductPieceBarcode" type="button" title="مسح باركود القطعة">${barcodeSvg}</button></div></div><div class="field"><label>طريقة الإضافة</label><select id="productAddMode"><option value="piece" ${p.mode!=='unit'?'selected':''}>قطعة</option><option value="unit" ${p.mode==='unit'?'selected':''}>وحدة / كرتونة</option></select></div><div class="field piece-fields"><label>عدد القطع للمخزون الرئيسي</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.001" id="pPieces" value="${n(p.stock)}"></div><div class="field piece-fields"><label>سعر الشراء للقطعة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pBuyPiece" value="${n(p.purchasePrice)}"></div><div class="field piece-fields"><label>سعر البيع للقطعة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pSalePiece" value="${n(p.salePrice)}"></div><div class="field unit-fields hidden"><label>اسم الوحدة</label><input class="input" id="pUnitName" value="${esc(p.unitName||'كرتونة')}"></div><div class="field unit-fields hidden"><label>عدد الوحدات</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.001" id="pUnits" value="${n(p.units||0)}"></div><div class="field unit-fields hidden"><label>كم قطعة في الوحدة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.001" id="pPerUnit" value="${n(p.piecesPerUnit||1)}"></div><div class="field unit-fields hidden"><label>سعر الوحدة جملة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pUnitBuy" value="${n(p.unitBuy)}"></div><div class="field unit-fields hidden"><label>سعر الوحدة بيع</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pUnitSale" value="${n(p.unitSale)}"></div><div class="field"><label>&nbsp;</label><button class="primary-btn" type="button" onclick="App.addProductVariantRow()"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span> إضافة صنف / طعم / حجم</button></div></div><div class="card" style="margin-top:12px"><b>الأصناف الإضافية لنفس الاسم والصورة:</b><div id="productVariantsBox" class="variant-list">${variantsHtml}</div></div><div class="form-grid product-tail-grid">${selectWithSearch('pSupplier','المورد',coll('suppliers'),p.supplierId)}${selectWithSearch('pAccount','الحساب المخصوم منه',coll('accounts'),p.accountId||'cash')}<div class="field"><label>التصنيف</label><input class="input" id="pCat" value="${esc(p.category)}"></div><div class="field"><label>المدفوع من المبلغ</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pPaid" value="${id?n(p.purchasePaid):''}"></div></div><div class="card" style="margin-top:12px"><b>الحساب التلقائي:</b> <span id="productCalc">—</span></div>`;
+    const html=`<div class="form-grid"><div class="field"><label>اسم المنتج</label><input class="input" id="pName" value="${esc(p.name)}"></div><div class="field"><label>رابط صورة المنتج</label><input class="input" id="pImage" value="${esc(p.image)}"></div><div class="field"><label>${barcodeSvg} باركود الوحدة</label><div style="display:flex;gap:8px"><input class="input" id="productBarcode" value="${esc(p.barcode)}" placeholder="باركود الكرتونة / الوحدة"><button class="icon-btn" data-action="scanProductBarcode" type="button" title="مسح باركود الوحدة">${barcodeSvg}</button></div></div><div class="field"><label>${barcodeSvg} باركود القطعة</label><div style="display:flex;gap:8px"><input class="input" id="productPieceBarcode" value="${esc(p.pieceBarcode||'')}" placeholder="اتركه فارغاً ليأخذ باركود الوحدة"><button class="icon-btn" data-action="scanProductPieceBarcode" type="button" title="مسح باركود القطعة">${barcodeSvg}</button></div></div><div class="field"><label>طريقة الإضافة</label><select id="productAddMode"><option value="piece" ${p.mode!=='unit'?'selected':''}>قطعة</option><option value="unit" ${p.mode==='unit'?'selected':''}>وحدة / كرتونة</option></select></div><div class="field piece-fields"><label>عدد القطع للمخزون الرئيسي</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.001" id="pPieces" value="${n(p.stock)}"></div><div class="field piece-fields"><label>سعر الشراء للقطعة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pBuyPiece" value="${n(p.purchasePrice)}"></div><div class="field piece-fields"><label>سعر البيع للقطعة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pSalePiece" value="${n(p.salePrice)}"></div><div class="field unit-fields hidden"><label>اسم الوحدة</label><input class="input" id="pUnitName" value="${esc(p.unitName||'كرتونة')}"></div><div class="field unit-fields hidden"><label>عدد الوحدات</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.001" id="pUnits" value="${n(p.units||0)}"></div><div class="field unit-fields hidden"><label>كم قطعة في الوحدة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.001" id="pPerUnit" value="${n(p.piecesPerUnit||1)}"></div><div class="field unit-fields hidden"><label>سعر الوحدة جملة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pUnitBuy" value="${n(p.unitBuy)}"></div><div class="field unit-fields hidden"><label>سعر الوحدة بيع</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pUnitSale" value="${n(p.unitSale)}"></div><div class="field"><label>&nbsp;</label><button class="primary-btn product-add-variant-btn" type="button" onclick="App.addProductVariantRow()"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span> إضافة&nbsp;صنف&nbsp;/&nbsp;طعم&nbsp;/&nbsp;حجم</button></div></div><div class="card" style="margin-top:12px"><b>الأصناف الإضافية لنفس الاسم والصورة:</b><div id="productVariantsBox" class="variant-list">${variantsHtml}</div></div><div class="form-grid product-tail-grid">${selectWithSearch('pSupplier','المورد',coll('suppliers'),p.supplierId)}${selectWithSearch('pAccount','الحساب المخصوم منه',coll('accounts'),p.accountId||'cash')}<div class="field"><label>التصنيف</label><input class="input" id="pCat" value="${esc(p.category)}"></div><div class="field"><label>المدفوع من المبلغ</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pPaid" value="${id?n(p.purchasePaid):''}"></div></div><div class="card" style="margin-top:12px"><b>الحساب التلقائي:</b> <span id="productCalc">—</span></div>`;
     const box=openModal(id?'تعديل منتج':'إضافة منتج',html,'حفظ المنتج',()=>{
       const mode=$('#productAddMode').value; let stock=n($('#pPieces')?.value), buy=n($('#pBuyPiece')?.value), sale=n($('#pSalePiece')?.value), units=0, per=1, unitBuy=0, unitSale=0;
       if(mode==='unit'){units=n($('#pUnits').value); per=n($('#pPerUnit').value)||1; unitBuy=n($('#pUnitBuy').value); unitSale=n($('#pUnitSale').value); stock=units*per; buy=per?unitBuy/per:0; sale=per?unitSale/per:0;}
@@ -2487,8 +2796,33 @@ const App = (() => {
   function saveSettings(){ const s={...settings(),id:'main',storeName:$('#setStoreName').value.trim()||'أوسكار',lowStock:n($('#setLowStock').value),currency:$('#setCurrency').value||'₪',printWidth:$('#setPrintWidth').value||'58mm',autoPrintInvoice:$('#setAutoPrintInvoice')?.value==='true',updatedAt:Date.now()}; state.store.settings=[s]; queue('set','settings','main',s,false); saveStore(); applyStoreName(); autoSync(); toast('تم حفظ الإعدادات'); }
 
   function exportBackup(){downloadBlob(JSON.stringify(state.store,null,2),'oscar-backup.json','application/json'); toast('تم تنزيل نسخة احتياطية')}
-  function importBackup(file){if(!file)return; const r=new FileReader(); r.onload=()=>{try{state.store=JSON.parse(r.result); saveStore(); toast('تم استيراد النسخة')}catch(e){toast('ملف غير صالح','bad')}}; r.readAsText(file)}
-  window.addEventListener('DOMContentLoaded',()=>{ if(!ensureSession()) return; loadStore(); initUI(); if(!guardPage()) return; render(); initFirebase();});
+  function importBackup(file){
+    if(!file)return;
+    const r=new FileReader();
+    r.onload=async ()=>{
+      try{
+        const raw=JSON.parse(r.result);
+        const imported=normalizeImportedStore(raw);
+        state.store=imported;
+        saveStore(false);
+        render();
+        updateStatus();
+        const count=await prepareBackupSyncQueue(imported);
+        if(count>0){
+          toast(`تم استيراد النسخة — ${count} عنصر بحاجة للمزامنة`);
+          if(navigator.onLine) runFullSync(false).catch(e=>{state.syncError=e?.message||String(e); updateStatus();});
+          else toast('لا يوجد اتصال؛ تم حفظ النسخة محلياً وستزامن عند رجوع الإنترنت','warn');
+        }else{
+          toast('تم استيراد النسخة، ولا توجد عناصر جديدة تحتاج مزامنة');
+        }
+      }catch(e){
+        console.warn(e);
+        toast('ملف غير صالح','bad');
+      }
+    };
+    r.readAsText(file);
+  }
+  window.addEventListener('DOMContentLoaded',()=>{ if(!ensureSession()) return; loadStore(); initUI(); if(!guardPage()) return; render(); setTimeout(()=>initFirebase(),80);});
   return {addProductToCart,updateCart,changeCartQty,removeCart,addProductVariantRow,removeProductVariantRow,scanVariantBarcode,toggleVariantMode,cancelCashierInvoiceEdit,openBarcodeModal,renderCashier,mobileUseRtcOffer,sendMobileBarcode:(code)=>window.sendMobileBarcode?.(code),sendMobileProduct:(id)=>window.sendMobileProduct?.(id),renderMobileProducts,exportBackup,importBackup,syncQueue,pullAllRemote,runFullSync};
 })();
 window.App = App;

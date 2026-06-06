@@ -490,6 +490,85 @@ body{margin:0;background:linear-gradient(160deg,#eaf4ff,#f8fafc);font-family:'Ca
   }
 }
 
+
+/* زر إضافة&nbsp;صنف&nbsp;/&nbsp;طعم&nbsp;/&nbsp;حجم بسطر واحد */
+.product-add-variant-btn{
+  white-space:nowrap!important;
+  width:100%!important;
+  min-width:max-content!important;
+}
+@media(max-width:560px){
+  .product-add-variant-btn{
+    min-width:0!important;
+    font-size:13px!important;
+    padding-inline:10px!important;
+  }
+}
+
+
+/* شريط مزامنة النسخة الاحتياطية - يظهر فقط بعد الاسترداد */
+.backup-sync-progress{
+  position:fixed;
+  left:16px;
+  right:16px;
+  bottom:86px;
+  z-index:260;
+  max-width:620px;
+  margin:0 auto;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:18px;
+  box-shadow:var(--shadow);
+  padding:12px;
+  display:grid;
+  gap:8px;
+  direction:rtl;
+}
+.backup-sync-progress.hidden{display:none}
+.backup-sync-progress .backup-sync-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  font-weight:900;
+  color:var(--ink);
+  font-size:13px;
+}
+.backup-sync-progress .backup-sync-track{
+  height:9px;
+  border-radius:999px;
+  background:rgba(148,163,184,.20);
+  overflow:hidden;
+}
+.backup-sync-progress .backup-sync-fill{
+  height:100%;
+  width:0%;
+  border-radius:999px;
+  background:var(--primary);
+  transition:.18s width;
+}
+.backup-sync-progress small{
+  color:var(--muted);
+  font-weight:800;
+}
+
+
+.backup-sync-progress .backup-sync-close{
+  border:0;
+  background:rgba(148,163,184,.16);
+  color:var(--ink);
+  width:30px;
+  height:30px;
+  border-radius:999px;
+  font-weight:900;
+  display:grid;
+  place-items:center;
+}
+.backup-sync-progress .backup-sync-close:hover{
+  background:rgba(239,68,68,.12);
+  color:#b91c1c;
+}
+
 </style></head>
 <body><div id="toast" class="toast"></div><main class="login-shell"><section class="login-card"><div class="brand" style="margin-bottom:18px"><div class="brand-logo">O</div><div><h1>أوسكار</h1><p>تسجيل الدخول</p></div></div><form id="loginForm" autocomplete="off"><div class="field"><label>مفتاح الشركة</label><input class="input" id="companyKey" name="company_key_manual" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text"></div><div class="field"><label>اسم المستخدم</label><input class="input" id="username" name="user_manual" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false"></div><div class="field"><label>كلمة المرور</label><input class="input" id="password" name="pass_manual" type="password" autocomplete="new-password"></div><button class="primary-btn" id="loginBtn" type="submit">تسجيل الدخول</button></form></section></main><script>
 const firebaseConfig = {apiKey:"AIzaSyABeNXngGQW6Vd8tH5O1KP_dG_xYsLUjm0",authDomain:"anwar-e5aca.firebaseapp.com",projectId:"anwar-e5aca",databaseURL:"https://anwar-e5aca-default-rtdb.southamerica-east1.firebasedatabase.app",storageBucket:"anwar-e5aca.firebasestorage.app",messagingSenderId:"867794060996",appId:"1:867794060996:web:6ce6feeb35684972856b91",measurementId:"G-W124E3585D"};
@@ -608,12 +687,28 @@ async function fetchCloudCompany(companyKey){
   try{
     const ok=await pickDatabaseURL(companyKey);
     if(!ok) return {status:'db-error',company:null};
-    const company=await rtdbGet(`companies/${safePathPart(companyKey)}`,8000);
-    if(!isRealCompanyRecord(company)) return {status:'missing',company:null};
-    const adminVal=normalizeAdmin(company.admin);
-    const employees=rowsFromObject(company.employees || {});
-    return {status:'ok',company:{companyKey,active:company.active!==false,subscriptionEnd:company.subscriptionEnd||'2099-12-31',admin:adminVal,employees,_fromCloud:true,companyName:company.companyName||company.storeName||'',storeName:company.storeName||company.companyName||''}};
-  }catch(e){console.warn('cloud login read failed',e); return {status:'error',company:null};}
+
+    // قراءة خفيفة عند تسجيل الدخول: لا نسحب companies/{key} بالكامل حتى لا يتم تحميل المبيعات/المنتجات الكبيرة.
+    const base=`companies/${safePathPart(companyKey)}`;
+    const [adminRaw, employeesRaw, active, subscriptionEnd, companyName, storeName, updatedAt, createdAt] = await Promise.all([
+      rtdbGet(`${base}/admin`,4500).catch(()=>null),
+      rtdbGet(`${base}/employees`,4500).catch(()=>null),
+      rtdbGet(`${base}/active`,3500).catch(()=>undefined),
+      rtdbGet(`${base}/subscriptionEnd`,3500).catch(()=>'2099-12-31'),
+      rtdbGet(`${base}/companyName`,3500).catch(()=>''),
+      rtdbGet(`${base}/storeName`,3500).catch(()=>''),
+      rtdbGet(`${base}/updatedAt`,3500).catch(()=>0),
+      rtdbGet(`${base}/createdAt`,3500).catch(()=>0)
+    ]);
+
+    const adminVal=normalizeAdmin(adminRaw);
+    const employees=rowsFromObject(employeesRaw || {});
+    const hasLoginData=!!(adminVal || employees.length);
+    const hasIdentity=!!(companyName || storeName || updatedAt || createdAt || hasLoginData);
+    if(!hasIdentity || !hasLoginData) return {status:'missing',company:null};
+
+    return {status:'ok',company:{companyKey,active:active!==false,subscriptionEnd:subscriptionEnd||'2099-12-31',admin:adminVal,employees,_fromCloud:true,companyName:companyName||storeName||'',storeName:storeName||companyName||'',updatedAt,createdAt}};
+  }catch(e){console.warn('cloud login lightweight read failed',e); return {status:'error',company:null};}
 }
 async function cacheCloudCompany(company){
   if(!company) return;
