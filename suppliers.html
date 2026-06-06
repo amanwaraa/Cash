@@ -1874,24 +1874,43 @@ const App = (() => {
     root.innerHTML= rows.length? rows.map(p=>`<button class="product-tile" onclick="App.addProductToCart('${p.id}',1,'popular')"><div class="product-img">${productImageHtml(p)}</div><div class="product-name">${esc(p.name)}</div><div class="product-stock">المخزون: ${n(productTotalStock(p))} قطعة${productVariants(p).length?` — ${productVariants(p).length} أصناف`:''}</div><div class="product-price">${money(p.salePrice)}</div></button>`).join('') : '<div class="empty" style="grid-column:1/-1">لا توجد منتجات</div>';
   }
 
-  function addProductToCart(productId, qty=1, source='manual', variantId='', preferredMode='piece'){
+  function addProductToCart(productId, qty=1, source='manual', variantId='', preferredMode='piece', scanCode=''){
     const p=coll('products').find(x=>String(x.id)===String(productId)); if(!p){toast('المنتج غير موجود','bad'); return;}
     const variant=getProductVariant(p,variantId);
     const locked=!!variant && ['scan','camera','variantBarcode','قارئ باركود','كاميرا الكاشير','جوال محلي','هاتف مرتبط','جوال مرتبط'].includes(String(source));
     const cart=getCart(); const keyVariant=variant?String(variant.id):'';
     const startMode=preferredMode==='unit'?'unit':'piece';
-    const i=cart.findIndex(x=>String(x.productId)===String(productId) && String(x.variantId||'')===keyVariant && !x.custom && (x.sellMode||'piece')===startMode);
-    if(i>=0){ cart[i].qty=n(cart[i].qty)+n(qty); cart[i]=normalizeCartLine(cart[i]); }
-    else cart.push(normalizeCartLine({id:uid('line'),productId:p.id,variantId:keyVariant,variantLabel:variant?variantLabel(variant):'',variantLocked:locked,name:p.name,price:n((variant||p).salePrice),cost:n((variant||p).purchasePrice),qty:n(qty),custom:false,sellMode:startMode,unitLabel:startMode==='unit'?((variant||p).unitName||'وحدة'):'قطعة',unitMultiplier:startMode==='unit'?n((variant||p).piecesPerUnit||1):1,stockQty:n(qty)}));
+    const cleanScan=toLatinDigits(scanCode||'').trim();
+
+    // عند مسح نفس المنتج/الصنف بنفس وضع البيع لا نضيف سطر جديد، بل نزود الكمية +1.
+    // ولو السطر قديم ولا يحمل scanCode، ندمجه حسب المنتج + الصنف + قطعة/وحدة.
+    let i=cart.findIndex(x=>!x.custom && String(x.productId)===String(productId) && String(x.variantId||'')===keyVariant && (x.sellMode||'piece')===startMode);
+    if(i<0 && cleanScan){
+      i=cart.findIndex(x=>!x.custom && String(x.scanCode||'')===cleanScan);
+    }
+    if(i>=0){
+      cart[i].qty=n(cart[i].qty)+n(qty);
+      cart[i].scanCode=cart[i].scanCode||cleanScan;
+      cart[i].variantLocked=cart[i].variantLocked||locked;
+      cart[i]=normalizeCartLine(cart[i]);
+      toast('تم زيادة الكمية +1');
+    } else {
+      cart.push(normalizeCartLine({id:uid('line'),productId:p.id,variantId:keyVariant,variantLabel:variant?variantLabel(variant):'',variantLocked:locked,name:p.name,price:n((variant||p).salePrice),cost:n((variant||p).purchasePrice),qty:n(qty),custom:false,sellMode:startMode,unitLabel:startMode==='unit'?((variant||p).unitName||'وحدة'):'قطعة',unitMultiplier:startMode==='unit'?n((variant||p).piecesPerUnit||1):1,stockQty:n(qty),scanCode:cleanScan}));
+      toast(variant?'تم إضافة صنف المنتج إلى السلة':'تم إضافة المنتج بنجاح إلى السلة');
+    }
     localStorage.setItem(localKey('cashierCart'),JSON.stringify(cart));
     if(source==='scan' || source==='camera' || source==='variantBarcode' || source==='كاميرا الكاشير') beepBarcode();
-    toast(variant?'تم إضافة صنف المنتج إلى السلة':'تم إضافة المنتج بنجاح إلى السلة'); renderCashier();
+    renderCashier();
   }
 
   function addBarcodeToCashier(code, source='باركود'){
-    const now=Date.now(); if(state.scanLast.code===code && now-state.scanLast.time<1400) return; state.scanLast={code,time:now};
+    code=toLatinDigits(code).trim();
+    const now=Date.now();
+    // لا تمنع تكرار نفس الباركود كعملية جديدة؛ فقط امنع التكرار اللحظي جداً الناتج عن نفس فريم الكاميرا.
+    if(state.scanLast.code===code && now-state.scanLast.time<450) return;
+    state.scanLast={code,time:now};
     const hit=findBarcodeProduct(code);
-    if(hit){ addProductToCart(hit.product.id,1,hit.isVariant?'variantBarcode':'scan',hit.variant?.id||'',hit.barcodeMode||'piece'); }
+    if(hit){ addProductToCart(hit.product.id,1,hit.isVariant?'variantBarcode':'scan',hit.variant?.id||'',hit.barcodeMode||'piece',code); }
     else { toast('باركود غير مسجل: '+code,'warn'); }
   }
 
