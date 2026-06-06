@@ -174,6 +174,12 @@
   }
 }
 
+
+.shortcut-kbd{direction:ltr;display:inline-flex;align-items:center;justify-content:center;min-width:34px;min-height:28px;border-radius:8px;padding:3px 8px;background:#111827;color:#fff;font-weight:900;font-size:12px;box-shadow:inset 0 -2px 0 rgba(255,255,255,.14)}
+/* ضبط قارئ الباركود وسطر الكاشير للجوال */
+.cart-line .cart-line-unit-col{min-width:0}.cart-line .cart-unit-select,.cart-line .cart-unit-plain{max-width:94px;width:auto;min-width:62px;padding-inline:8px;white-space:nowrap}.cart-line .cart-line-meta{max-width:max-content;padding-inline:8px}
+@media(max-width:560px){.cart-line{grid-template-columns:minmax(52px,72px) minmax(116px,132px) minmax(54px,62px) 48px!important;column-gap:5px!important}.cart-line-main{grid-column:1/-1!important;gap:5px!important;align-items:center!important}.cart-line-name{max-width:calc(100% - 86px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cart-line-meta{font-size:10px!important;padding:3px 7px!important;max-width:82px!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cart-line-unit-col{grid-column:1!important;justify-self:start!important;width:100%!important;min-width:0!important}.cart-line .cart-unit-select,.cart-line .cart-unit-plain{min-height:34px!important;height:34px!important;max-width:72px!important;min-width:52px!important;width:100%!important;font-size:10px!important;border-radius:13px!important;padding:5px 6px!important;justify-content:center!important;text-align:center!important}.qty-stepper{grid-column:2!important;justify-self:stretch!important;width:100%!important;min-width:116px!important;display:grid!important;grid-template-columns:31px minmax(42px,1fr) 31px!important;gap:4px!important;padding:3px!important;border-radius:16px!important;overflow:visible!important}.qty-btn{width:31px!important;min-width:31px!important;height:31px!important;border-radius:50%!important;padding:0!important}.qty-stepper .input{width:100%!important;min-width:40px!important;height:31px!important;min-height:31px!important;padding:3px!important;font-size:12px!important}.cart-line .cart-price{grid-column:3!important;width:100%!important;min-width:0!important;height:34px!important;min-height:34px!important;padding:4px!important;font-size:11px!important}.cart-line-remove{grid-column:4!important;width:100%!important;min-width:42px!important;height:34px!important;min-height:34px!important;padding:4px!important}}
+
 </style>
 </head>
 <body data-page="accounts">
@@ -605,15 +611,6 @@ const App = (() => {
   async function rtdbGet(path){ const r=await fetchTimeout(rtdbUrl(path),{},12000); if(!r.ok) throw new Error('RTDB GET '+r.status+' '+(await r.text()).slice(0,160)); return await r.json(); }
   async function rtdbSet(path, data){ const r=await fetchTimeout(rtdbUrl(path),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)},12000); if(!r.ok) throw new Error('RTDB PUT '+r.status+' '+(await r.text()).slice(0,160)); return await r.json(); }
   async function rtdbRemove(path){ const r=await fetchTimeout(rtdbUrl(path),{method:'DELETE'},12000); if(!r.ok) throw new Error('RTDB DELETE '+r.status+' '+(await r.text()).slice(0,160)); return await r.json(); }
-
-  function pageCollections(){
-    const map={dashboard:['settings','accounts','invoices','products','customers','expenses','notifications'],cashier:['settings','products','customers','accounts','invoices','scannerEvents','scannerSessions'],products:['settings','products','suppliers','accounts'],customers:['settings','customers','accounts'],suppliers:['settings','suppliers','accounts'],accounts:['settings','accounts'],invoices:['settings','invoices','customers','accounts','products'],inventory:['settings','products','inventory'],expenses:['settings','expenses','accounts'],finance:['settings','accounts','customers','suppliers','invoices','expenses'],analytics:['settings','accounts','customers','suppliers','invoices','expenses'],notifications:['settings','notifications','products','customers'],employees:['settings','employees'],settings:['settings'],shortcuts:['settings']};
-    const base=map[state.page]||['settings'];
-    const needed=[...base];
-    if(Array.isArray(state.store?._pendingSync)) state.store._pendingSync.forEach(j=>{const n=j.collectionName||j.collection; if(n) needed.push(n);});
-    return [...new Set(needed.filter(x=>collections.includes(x)))];
-  }
-
   function collectionPath(name){ return name==='employees' ? `companies/${safePathPart(companyKey)}/employees` : `companies/${safePathPart(companyKey)}/data/${name}`; }
   function docPath(name,id){ return `${collectionPath(name)}/${safePathPart(id)}`; }
   function rowsFromVal(val){
@@ -714,7 +711,7 @@ const App = (() => {
   }
   async function pushLocalSnapshot(){
     if(!state.firebaseReady || !navigator.onLine || !state.store) return;
-    for(const name of pageCollections()){
+    for(const name of collections){
       const remoteRows=rowsFromVal(await rtdbGet(collectionPath(name)).catch(()=>null));
       const remoteById=new Map(remoteRows.map(x=>[String(x.id),x]));
       let batch=[];
@@ -780,7 +777,10 @@ const App = (() => {
     if(!state.firebaseReady || !navigator.onLine) return;
     await pullRemoteDeletes();
     let hadError=false;
-    const ordered=pageCollections();
+    const priority = state.page==='cashier'
+      ? ['scannerEvents','products','customers','accounts','settings','scannerSessions','invoices','activity','inventory','notifications','suppliers','expenses','employees']
+      : ['settings','products','customers','accounts','invoices','scannerEvents','scannerSessions','activity','inventory','notifications','suppliers','expenses','employees'];
+    const ordered=[...new Set(priority.filter(x=>collections.includes(x)).concat(collections))];
     for(const name of ordered){
       try{
         const rows=rowsFromVal(await rtdbGet(collectionPath(name)));
@@ -792,7 +792,7 @@ const App = (() => {
         await new Promise(r=>setTimeout(r,0));
       }catch(e){hadError=true; console.warn('pull failed', name, e); state.syncError=e?.message||String(e); updateStatus();}
     }
-    if(!hadError) state.syncError=''; updateStatus();
+    if(!hadError) state.syncError=''; updateStatus(); scheduleRender(true);
   }
   async function syncQueue(){
     if(!state.store) return;
@@ -906,84 +906,123 @@ const App = (() => {
     window.addEventListener('offline',()=>{state.syncError=''; updateStatus(); saveStore(false); toast('وضع بدون إنترنت: يمكنك البيع والإضافة والحذف محلياً','warn')});
     window.addEventListener('beforeunload',()=>{try{if(state.store) localStorage.setItem(storeKey(), JSON.stringify(state.store));}catch(e){}});    if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(console.warn);
     document.addEventListener('click', handleGlobalClick);
+    document.addEventListener('keydown', handleBarcodeScannerInput, true);
+    document.addEventListener('keydown', handleKeyboardShortcuts);
     document.addEventListener('input', handleGlobalInput);
     document.addEventListener('change', handleGlobalInput);
     state.bc = 'BroadcastChannel' in window ? new BroadcastChannel('oscar-scanner') : null;
-    if(state.bc) state.bc.onmessage = e => { if(e.data?.barcode) addBarcodeToCashier(e.data.barcode,'هاتف مرتبط') }; connectLocalBridge();
+    if(state.bc) state.bc.onmessage = e => { if(e.data?.barcode) addBarcodeToCashier(e.data.barcode,'هاتف مرتبط') }; connectLocalBridge(); runPendingShortcut();
   }
   function toggleSide(show){$('#sidebar')?.classList.toggle('show',show); $('#sideOverlay')?.classList.toggle('show',show)}
   function toggleTheme(){const next=document.documentElement.dataset.theme==='dark'?'light':'dark'; document.documentElement.dataset.theme=next; localStorage.setItem('theme',next)}
   const shortcutList = [
-    ['F1','فتح صفحة دليل الاختصارات'],
-    ['F2','فتح الكاشير'],
-    ['F3','فتح المنتجات'],
-    ['F4','فتح العملاء والديون'],
-    ['F5','فتح الفواتير'],
-    ['F6','فتح الحسابات'],
-    ['F7','فتح المالية'],
-    ['F8','فتح المصروفات'],
-    ['F9','فتح الإعدادات'],
-    ['Ctrl + B','تركيز المؤشر على قارئ الباركود'],
-    ['Ctrl + Enter','حفظ / إصدار الفاتورة'],
-    ['Ctrl + D','تعليق الفاتورة كمسودة'],
-    ['Ctrl + X','فتح نافذة الخصم'],
-    ['Ctrl + M','إضافة فاتورة بدون مخزون / صنف يدوي'],
-    ['Ctrl + K','تفريغ سلة الكاشير'],
-    ['+','زيادة كمية آخر صنف في السلة'],
-    ['-','إنقاص كمية آخر صنف في السلة'],
-    ['Delete','حذف آخر صنف من السلة'],
-    ['Ctrl + Shift + C','إضافة عميل جديد'],
-    ['Ctrl + Shift + D','إضافة دين على عميل'],
-    ['Ctrl + Shift + P','إضافة منتج جديد'],
-    ['Ctrl + Shift + E','إضافة موظف جديد'],
-    ['Ctrl + Shift + A','إضافة حساب جديد'],
-    ['Ctrl + Shift + T','تحويل بين الحسابات'],
-    ['Ctrl + Shift + I','إضافة مصروف جديد']
+    ['F1','فتح صفحة الاختصارات','shortcuts'],
+    ['F2','فتح الكاشير','cashier'],
+    ['F3','فتح المنتجات','products'],
+    ['F4','فتح العملاء والديون','customers'],
+    ['F5','فتح الفواتير','invoices'],
+    ['F6','فتح الحسابات','accounts'],
+    ['F7','فتح المالية','finance'],
+    ['F8','فتح المصروفات','expenses'],
+    ['F9','فتح الإعدادات','settings'],
+    ['Ctrl + B','تركيز قارئ الباركود بالكاشير','barcode'],
+    ['Ctrl + Enter','حفظ / إصدار الفاتورة','save'],
+    ['Ctrl + D','تعليق الفاتورة كمسودة','draft'],
+    ['Ctrl + X','فتح نافذة الخصم','discount'],
+    ['Ctrl + M','إضافة فاتورة بدون مخزون / صنف يدوي','custom'],
+    ['Ctrl + K','تفريغ سلة الكاشير','clear'],
+    ['+','زيادة كمية آخر صنف في السلة','plus'],
+    ['-','إنقاص كمية آخر صنف في السلة','minus'],
+    ['Delete','حذف آخر صنف من السلة','remove'],
+    ['Ctrl + Shift + C','إضافة عميل جديد','addCustomer'],
+    ['Ctrl + Shift + D','إضافة دين على عميل','quickDebt'],
+    ['Ctrl + Shift + P','إضافة منتج جديد','addProduct'],
+    ['Ctrl + Shift + E','إضافة موظف جديد','addEmployee'],
+    ['Ctrl + Shift + A','إضافة حساب جديد','account'],
+    ['Ctrl + Shift + T','تحويل مالي بين الحسابات','transfer'],
+    ['Esc','إغلاق النافذة أو الخروج من تعديل الفاتورة','escape']
   ];
+  function shortcutPendingKey(){ return localKey('pendingShortcutAction'); }
   function goPage(url){ if(location.pathname.split('/').pop()!==url) location.href=url; }
+  function runOnPage(pageName, action){ if(state.page!==pageName){ localStorage.setItem(shortcutPendingKey(), action); return goPage(pageName+'.html'); } return shortcutRun(action,true); }
   function lastCartIndex(){ const c=getCart(); return c.length?c.length-1:-1; }
-
-  function quickActionKey(){ return localKey('quickAction'); }
-  function setQuickAction(action,pageUrl){ localStorage.setItem(quickActionKey(),action); goPage(pageUrl); }
+  function runPendingShortcut(){ const action=localStorage.getItem(shortcutPendingKey()); if(!action) return; localStorage.removeItem(shortcutPendingKey()); setTimeout(()=>shortcutRun(action,true),360); }
   function openQuickCustomerDebt(){
-    const rows=coll('customers');
-    if(!rows.length){ toast('أضف العميل أولاً ثم أضف الدين','warn'); return openCustomer(); }
-    openModal('إضافة دين على عميل',`<div class="form-grid">${selectWithSearch('qdCustomer','العميل',rows,rows[0]?.id||'')}<div class="field"><label>المبلغ</label><input class="input" type="number" step="0.01" id="qdAmount"></div><div class="field full"><label>ملاحظات</label><input class="input" id="qdNote" placeholder="سبب الدين"></div></div>`,'حفظ الدين',()=>{ const id=$('#qdCustomer')?.value; const amount=n($('#qdAmount')?.value); if(!id || !amount){ toast('اختر العميل وأدخل المبلغ','bad'); return false; } customerDebt(id,amount,$('#qdNote')?.value||'دين سريع من الاختصار','debt'); toast('تمت إضافة الدين'); });
+    if(state.page!=='customers') return runOnPage('customers','quickDebt');
+    const customers=coll('customers');
+    if(!customers.length){ toast('لا يوجد عملاء. أضف عميل أولاً','warn'); return openCustomer(); }
+    const opts=customers.map(c=>`<option value="${esc(c.id)}">${esc(c.name||c.phone||c.id)} - دين: ${money(c.debt)}</option>`).join('');
+    openModal('إضافة دين على عميل',`<div class="form-grid"><div class="field"><label>العميل</label><select id="qdCustomer">${opts}</select></div><div class="field"><label>المبلغ</label><input class="input" type="number" step="0.01" id="qdAmount"></div><div class="field full"><label>ملاحظة</label><input class="input" id="qdNote" value="دين من اختصار الكيبورد"></div></div>`,'حفظ الدين',()=>{ const id=$('#qdCustomer').value; const amount=n($('#qdAmount').value); if(!id||!amount){toast('اختر العميل وأدخل المبلغ','bad'); return false;} customerDebt(id,amount,$('#qdNote').value||'دين يدوي','debt'); toast('تمت إضافة الدين'); });
   }
-  function runPendingQuickAction(){ const action=localStorage.getItem(quickActionKey()); if(!action) return; localStorage.removeItem(quickActionKey()); setTimeout(()=>shortcutRun(action),350); }
-
-  function shortcutRun(action){ const page=state.page;
+  function shortcutRun(action, fromPending=false){ const page=state.page;
     if(action==='shortcuts') return goPage('shortcuts.html');
     if(action==='cashier') return goPage('cashier.html');
     if(action==='products') return goPage('products.html');
     if(action==='customers') return goPage('customers.html');
     if(action==='invoices') return goPage('invoices.html');
-    if(action==='accounts') return goPage('accounts.html');
     if(action==='finance') return goPage('finance.html');
+    if(action==='accounts') return goPage('accounts.html');
     if(action==='expenses') return goPage('expenses.html');
     if(action==='settings') return goPage('settings.html');
-    if(action==='barcode'){ if(page!=='cashier') return setQuickAction('barcode','cashier.html'); $('#cashierBarcode')?.focus(); return toast('جاهز لقراءة الباركود'); }
+    if(action==='barcode'){ if(page!=='cashier') return runOnPage('cashier','barcode'); $('#cashierBarcode')?.focus(); return toast('جاهز لقراءة الباركود'); }
+    if(action==='addProduct'){ if(page!=='products') return runOnPage('products','addProduct'); return openProduct(); }
+    if(action==='addCustomer'){ if(page!=='customers') return runOnPage('customers','addCustomer'); return openCustomer(); }
+    if(action==='addEmployee'){ if(page!=='employees') return runOnPage('employees','addEmployee'); return openEmployee(); }
+    if(action==='quickDebt') return openQuickCustomerDebt();
     if(action==='save'){ if(page==='cashier') return saveInvoice(); if(page==='settings') return saveSettings(); return toast('لا يوجد حفظ سريع في هذه الصفحة','warn'); }
-    if(action==='draft'){ if(page!=='cashier') return setQuickAction('draft','cashier.html'); return saveInvoice('draft'); }
-    if(action==='discount'){ if(page!=='cashier') return setQuickAction('discount','cashier.html'); return openDiscountModal(); }
-    if(action==='custom'){ if(page!=='cashier') return setQuickAction('custom','cashier.html'); return openCustomLine(); }
-    if(action==='clear'){ if(page!=='cashier') return setQuickAction('clear','cashier.html'); resetCashierSale(); renderCashier(); return toast('تم تفريغ السلة'); }
-    if(action==='plus'){ if(page!=='cashier') return; const i=lastCartIndex(); if(i>=0) changeCartQty(i,1); return; }
-    if(action==='minus'){ if(page!=='cashier') return; const i=lastCartIndex(); if(i>=0) changeCartQty(i,-1); return; }
-    if(action==='remove'){ if(page!=='cashier') return; const i=lastCartIndex(); if(i>=0) removeCart(i); return; }
-    if(action==='addCustomer'){ if(page!=='customers') return setQuickAction('addCustomer','customers.html'); return openCustomer(); }
-    if(action==='customerDebt'){ if(page!=='customers') return setQuickAction('customerDebt','customers.html'); return openQuickCustomerDebt(); }
-    if(action==='addProduct'){ if(page!=='products') return setQuickAction('addProduct','products.html'); return openProduct(); }
-    if(action==='addEmployee'){ if(page!=='employees') return setQuickAction('addEmployee','employees.html'); return openEmployee(); }
-    if(action==='addAccount'){ if(page!=='accounts') return setQuickAction('addAccount','accounts.html'); return openAccount(); }
-    if(action==='transfer'){ if(page!=='accounts') return setQuickAction('transfer','accounts.html'); return openTransfer(); }
-    if(action==='expense'){ if(page!=='expenses') return setQuickAction('expense','expenses.html'); return openExpense(); }
+    if(action==='draft'){ if(page!=='cashier') return runOnPage('cashier','draft'); return saveInvoice('draft'); }
+    if(action==='discount'){ if(page!=='cashier') return runOnPage('cashier','discount'); return openDiscountModal(); }
+    if(action==='clear'){ if(page!=='cashier') return runOnPage('cashier','clear'); resetCashierSale(); renderCashier(); return toast('تم تفريغ السلة'); }
+    if(action==='custom'){ if(page!=='cashier') return runOnPage('cashier','custom'); return openCustomLine(); }
+    if(action==='expense'){ if(page!=='expenses') return runOnPage('expenses','expense'); return openExpense(); }
+    if(action==='account'){ if(page!=='accounts') return runOnPage('accounts','account'); return openAccount(); }
+    if(action==='transfer'){ if(page!=='accounts') return runOnPage('accounts','transfer'); return openTransfer(); }
+    if(action==='plus'){ if(page==='cashier'){ const i=lastCartIndex(); if(i>=0) changeCartQty(i,1); } return; }
+    if(action==='minus'){ if(page==='cashier'){ const i=lastCartIndex(); if(i>=0) changeCartQty(i,-1); } return; }
+    if(action==='remove'){ if(page==='cashier'){ const i=lastCartIndex(); if(i>=0) removeCart(i); } return; }
     if(action==='escape'){ const m=document.querySelector('.modal-backdrop.show'); if(m){m.remove(); return;} if(page==='cashier' && getCashierEdit()) return cancelCashierInvoiceEdit(); }
   }
-  function handleKeyboardShortcuts(e){ const tag=(e.target?.tagName||'').toLowerCase(); const typing=['input','textarea','select'].includes(tag)||e.target?.isContentEditable; if(typing && !e.ctrlKey && !e.metaKey) return; let a=''; const k=e.key;
-    if(k==='F1')a='shortcuts'; else if(k==='F2')a='cashier'; else if(k==='F3')a='products'; else if(k==='F4')a='customers'; else if(k==='F6')a='invoices'; else if(k==='F7')a='finance'; else if(k==='F8')a='accounts'; else if(k==='F9')a='settings';
-    else if((e.ctrlKey||e.metaKey)&&k.toLowerCase()==='b')a='barcode'; else if((e.ctrlKey||e.metaKey)&&k.toLowerCase()==='p')a='addProduct'; else if((e.ctrlKey||e.metaKey)&&k.toLowerCase()==='n')a='addCustomer'; else if((e.ctrlKey||e.metaKey)&&k.toLowerCase()==='s')a='save'; else if((e.ctrlKey||e.metaKey)&&k.toLowerCase()==='d')a='draft'; else if((e.ctrlKey||e.metaKey)&&k.toLowerCase()==='x')a='discount'; else if((e.ctrlKey||e.metaKey)&&k.toLowerCase()==='k')a='clear'; else if((e.ctrlKey||e.metaKey)&&k.toLowerCase()==='m')a='custom'; else if((e.ctrlKey||e.metaKey)&&k.toLowerCase()==='i')a='expense'; else if((e.ctrlKey||e.metaKey)&&k.toLowerCase()==='a')a='account'; else if((e.ctrlKey||e.metaKey)&&k.toLowerCase()==='t')a='transfer'; else if(!typing&&(k==='+'||k==='='))a='plus'; else if(!typing&&k==='-')a='minus'; else if(!typing&&k==='Delete')a='remove'; else if(k==='Escape')a='escape'; if(a){e.preventDefault(); e.stopPropagation(); shortcutRun(a);} }
-  function renderShortcuts(){ const root=$('#shortcutsList'); if(!root) return; root.innerHTML=shortcutList.map(x=>`<div class="shortcut-card"><div><b>${esc(x[1])}</b><small>اختصار سريع من لوحة المفاتيح</small></div><span class="shortcut-kbd">${esc(x[0])}</span></div>`).join(''); }
+  function handleKeyboardShortcuts(e){ const tag=(e.target?.tagName||'').toLowerCase(); const typing=['input','textarea','select'].includes(tag)||e.target?.isContentEditable; const k=e.key;
+    if(typing && !(e.ctrlKey||e.metaKey)) return;
+    let a='';
+    if(k==='F1')a='shortcuts'; else if(k==='F2')a='cashier'; else if(k==='F3')a='products'; else if(k==='F4')a='customers'; else if(k==='F5')a='invoices'; else if(k==='F6')a='accounts'; else if(k==='F7')a='finance'; else if(k==='F8')a='expenses'; else if(k==='F9')a='settings';
+    else if((e.ctrlKey||e.metaKey)&&k.toLowerCase()==='b')a='barcode';
+    else if((e.ctrlKey||e.metaKey)&&k==='Enter')a='save';
+    else if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&k.toLowerCase()==='d')a='draft';
+    else if((e.ctrlKey||e.metaKey)&&k.toLowerCase()==='x')a='discount';
+    else if((e.ctrlKey||e.metaKey)&&k.toLowerCase()==='m')a='custom';
+    else if((e.ctrlKey||e.metaKey)&&k.toLowerCase()==='k')a='clear';
+    else if((e.ctrlKey||e.metaKey)&&e.shiftKey&&k.toLowerCase()==='c')a='addCustomer';
+    else if((e.ctrlKey||e.metaKey)&&e.shiftKey&&k.toLowerCase()==='d')a='quickDebt';
+    else if((e.ctrlKey||e.metaKey)&&e.shiftKey&&k.toLowerCase()==='p')a='addProduct';
+    else if((e.ctrlKey||e.metaKey)&&e.shiftKey&&k.toLowerCase()==='e')a='addEmployee';
+    else if((e.ctrlKey||e.metaKey)&&e.shiftKey&&k.toLowerCase()==='a')a='account';
+    else if((e.ctrlKey||e.metaKey)&&e.shiftKey&&k.toLowerCase()==='t')a='transfer';
+    else if(!typing&&(k==='+'||k==='='))a='plus'; else if(!typing&&k==='-')a='minus'; else if(!typing&&k==='Delete')a='remove'; else if(k==='Escape')a='escape';
+    if(a){e.preventDefault(); e.stopPropagation(); shortcutRun(a);}
+  }
+  function renderShortcuts(){ const root=$('#shortcutsList'); if(!root) return; root.innerHTML=`<div class="table-wrap"><table><thead><tr><th>الاختصار</th><th>الوظيفة</th></tr></thead><tbody>${shortcutList.map(x=>`<tr><td><span class="shortcut-kbd">${esc(x[0])}</span></td><td><b>${esc(x[1])}</b></td></tr>`).join('')}</tbody></table></div>`; }
+  const barcodeWedge={text:'',last:0,timer:null};
+  function resetBarcodeWedge(){ barcodeWedge.text=''; barcodeWedge.last=0; if(barcodeWedge.timer) clearTimeout(barcodeWedge.timer); barcodeWedge.timer=null; }
+  function handleBarcodeScannerInput(e){
+    if(state.page!=='cashier') return;
+    if(e.ctrlKey||e.metaKey||e.altKey) return;
+    const target=e.target; const tag=(target?.tagName||'').toLowerCase(); const isBarcodeInput=target?.id==='cashierBarcode';
+    const typing=['input','textarea','select'].includes(tag)||target?.isContentEditable;
+    if(isBarcodeInput) return;
+    if(typing) return;
+    const key=e.key; const now=Date.now();
+    if(key==='Enter' || key==='Tab'){
+      if(barcodeWedge.text.length>=3){ e.preventDefault(); const code=barcodeWedge.text.trim(); resetBarcodeWedge(); if(code) addBarcodeToCashier(code,'قارئ باركود'); }
+      return;
+    }
+    if(!key || key.length!==1) return;
+    if(now-barcodeWedge.last>120) barcodeWedge.text='';
+    barcodeWedge.text+=key; barcodeWedge.last=now;
+    if(barcodeWedge.text.length>=3) e.preventDefault();
+    if(barcodeWedge.timer) clearTimeout(barcodeWedge.timer);
+    barcodeWedge.timer=setTimeout(()=>{ const code=barcodeWedge.text.trim(); resetBarcodeWedge(); if(code.length>=5) addBarcodeToCashier(code,'قارئ باركود'); },90);
+  }
 
   function handleGlobalClick(e){
     const act=e.target.closest('[data-action]')?.dataset.action; if(!act) return;
@@ -1318,7 +1357,7 @@ const App = (() => {
       const label=esc(l.unitLabel || (l.sellMode==='unit'?(data?.unitName||'وحدة'):'قطعة'));
       const meta=`${label}${l.sellMode==='unit'&&n(l.unitMultiplier)>1?' = '+n(l.unitMultiplier)+' قطعة':''}`;
       const variantBlock=variantSelect?`<div class="cart-variant-wrap">${variantSelect}</div>`:'';
-      return `<div class="cart-line"><div class="cart-line-main"><span class="cart-line-name">${esc(lineDisplayName(l))}</span><span class="cart-line-meta">${meta}</span>${variantBlock}</div><div class="cart-line-unit-col">${unitControl}</div><div class="qty-stepper"><button class="qty-btn plus" type="button" onclick="App.changeCartQty(${i},1)">${plusSvg}</button><input class="input cart-qty" type="number" step="0.001" value="${l.qty}" onchange="App.updateCart(${i},'qty',this.value)"><button class="qty-btn minus" type="button" onclick="App.changeCartQty(${i},-1)">${minusSvg}</button></div><input class="input cart-price" type="number" step="0.01" value="${l.price}" onchange="App.updateCart(${i},'price',this.value)"><span class="cart-total">${money(lineSaleTotal(l))}</span><button class="mini-btn red cart-line-remove" onclick="App.removeCart(${i})">✕</button></div>`;
+      return `<div class="cart-line"><div class="cart-line-main"><span class="cart-line-name">${esc(lineDisplayName(l))}</span><span class="cart-line-meta">${meta}</span>${variantBlock}</div><div class="cart-line-unit-col">${unitControl}</div><div class="qty-stepper"><button class="qty-btn plus" type="button" onclick="App.changeCartQty(${i},1)">${plusSvg}</button><input class="input cart-qty" type="number" step="0.001" value="${l.qty}" onchange="App.updateCart(${i},'qty',this.value)"><button class="qty-btn minus" type="button" onclick="App.changeCartQty(${i},-1)">${minusSvg}</button></div><input class="input cart-price" type="number" step="0.01" value="${lineSaleTotal(l).toFixed(2)}" onchange="App.updateCart(${i},'lineTotal',this.value)" title="إجمالي السطر"><span class="cart-total">${money(lineSaleTotal(l))}</span><button class="mini-btn red cart-line-remove" onclick="App.removeCart(${i})">✕</button></div>`;
     }).join('') : '<div class="empty">السلة فارغة. امسح باركود أو اضغط على منتج.</div>';
   }
   function normalizeCartLine(line){
@@ -1638,13 +1677,15 @@ const App = (() => {
     const st=settings();
     const cur=st.currency||'₪';
     const receiptMoney=v=>`${Number(v||0).toFixed(2)} ${cur}`;
+    const isDraft=String(inv.status||'issued')==='draft';
+    const titleText=isDraft?'فاتورة معلقة / مسودة':'فاتورة مبيعات مباشرة';
     const subtitle=(st.receiptSubtitle && !/ضريبية|مبسطة/.test(st.receiptSubtitle)) ? st.receiptSubtitle : titleText;
-    const items=(inv.items||[]).map(l=>`<div class="item-row"><span class="item-name">${esc(lineDisplayName(l))}</span><span class="item-qty">x${esc(l.qty||1)}</span><b>${esc(receiptMoney(lineSaleTotal(l)))}</b></div>`).join('') || '<div class="empty-line">لا توجد أصناف</div>'; const isDraft=String(inv.status||'issued')==='draft'; const titleText=isDraft?'فاتورة معلقة / مسودة':'فاتورة مبيعات مباشرة';
+    const items=(inv.items||[]).map(l=>`<div class="item-row"><span class="item-name">${esc(lineDisplayName(l))}</span><span class="item-qty">x${esc(l.qty||1)}</span><b>${esc(receiptMoney(lineSaleTotal(l)))}</b></div>`).join('') || '<div class="empty-line">لا توجد أصناف</div>';
     return `<html dir="rtl"><head><meta charset="utf-8"><title>${esc(inv.number)}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet"><style>
 *{box-sizing:border-box}html,body{margin:0;background:#fff;color:#000}body{font-family:Tahoma,'Arial Narrow',Arial,sans-serif;width:${width};margin:0 auto;padding:6px 7px;font-size:10.5px;line-height:1.45}.receipt{width:100%}.center{text-align:center}.store{font-size:17px;font-weight:900;line-height:1.2;margin-top:1px}.sub{font-size:10px;color:#4b5563;font-weight:700;margin-top:1px}.thin{border-top:1px solid #9ca3af;margin:8px 0}.sep{border-top:2px dashed #000;margin:10px 0}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start;margin:4px 0}.row .label{font-weight:900;text-align:right;white-space:nowrap}.row .val{font-weight:800;text-align:left;word-break:break-word}.ltr{direction:ltr;text-align:left}.items{display:grid;gap:0;margin:2px 0}.item-row{display:grid;grid-template-columns:1fr 34px 70px;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #e5e7eb}.item-name{text-align:right;font-weight:800;overflow-wrap:anywhere}.item-qty{text-align:center;font-weight:900;direction:ltr}.item-row b{text-align:left;direction:ltr;font-size:10.5px;font-weight:900;white-space:nowrap}.empty-line{text-align:center;color:#6b7280;padding:10px 0}.summary .row{font-size:10.5px;margin:3px 0}.summary .row .val{font-size:11px;font-weight:900}.footer{font-size:10px;text-align:center;margin-top:6px;color:#374151;font-weight:700}@media print{@page{size:${width} auto;margin:0}body{width:${width};margin:0;padding:6px 8px}}
 </style></head><body><div class="receipt"><div class="center"><div class="store">${esc(st.storeName||'أوسكار')}</div><div class="sub">${esc(subtitle)}</div></div><div class="thin"></div><div class="sep"></div><div class="row"><span class="label">رقم الفاتورة:</span><span class="val ltr">${esc(inv.number)}</span></div><div class="row"><span class="label">التاريخ والوقت:</span><span class="val">${new Date(inv.date).toLocaleString('ar')}</span></div><div class="row"><span class="label">الكاشير:</span><span class="val">${esc(session?.name||session?.username||'')}</span></div><div class="row"><span class="label">العميل:</span><span class="val">${esc(inv.customerName||'نقدي')}</span></div>${inv.phone?`<div class="row"><span class="label">الهاتف:</span><span class="val ltr">${esc(inv.phone)}</span></div>`:''}<div class="row"><span class="label">الحالة:</span><span class="val">${isDraft?'معلقة':'صادرة'}</span></div><div class="sep"></div><div class="items">${items}</div><div class="sep"></div><div class="summary"><div class="row"><span class="label">الإجمالي قبل الخصم:</span><span class="val ltr">${esc(receiptMoney(inv.subTotal||inv.total))}</span></div><div class="row"><span class="label">الخصم:</span><span class="val ltr">${esc(receiptMoney(inv.discountAmount||0))}</span></div><div class="row"><span class="label">إجمالي المبيعات:</span><span class="val ltr">${esc(receiptMoney(inv.total))}</span></div></div><div class="thin"></div><div class="footer">شكراً لزيارتكم</div></div>${autoPrint?'<script>setTimeout(()=>print(),250)<\/script>':''}</body></html>`;
   }
-  function printInvoice(id){const inv=coll('invoices').find(x=>x.id===id); if(!inv)return; const w=window.open('','_blank'); w.document.write(invoicePrintableHtml(inv,true)); w.document.close(); }
+  function printInvoice(id){const inv=coll('invoices').find(x=>x.id===id); if(!inv)return; const html=invoicePrintableHtml(inv,true); const w=window.open('about:blank','_blank'); if(!w){toast('اسمح بالنوافذ المنبثقة حتى تعمل الطباعة','warn'); return;} w.document.open(); w.document.write(html); w.document.close(); setTimeout(()=>{try{w.focus(); w.print();}catch(e){console.warn(e)}},450); }
   function downloadInvoicePdf(id){ const inv=coll('invoices').find(x=>x.id===id); if(!inv)return; downloadCanvasPdf(buildInvoiceCanvas(inv),(inv.number||'invoice')+'.pdf'); toast('تم تنزيل PDF الفاتورة'); }
   function buildInvoiceCanvas(inv){
     const rows=inv.items||[]; const h=560+rows.length*58; const canvas=document.createElement('canvas'); canvas.width=1000; canvas.height=h; const ctx=canvas.getContext('2d'); ctx.direction='rtl';
