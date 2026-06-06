@@ -1746,7 +1746,32 @@ const App = (() => {
   function productTotalWholesale(p){ return productBaseWholesale(p)+productVariants(p).reduce((a,v)=>a+productVariantWholesale(v),0); }
   function productTotalSaleValue(p){ return productBaseSaleValue(p)+productVariants(p).reduce((a,v)=>a+productVariantSaleValue(v),0); }
   function productInventoryTotals(){ const rows=coll('products'); const wholesale=rows.reduce((a,p)=>a+productTotalWholesale(p),0); const sale=rows.reduce((a,p)=>a+productTotalSaleValue(p),0); return {count:rows.length,wholesale,sale,profit:sale-wholesale}; }
-  function findBarcodeProduct(code){ const c=toLatinDigits(code).trim(); if(!c) return null; for(const p of coll('products')){ const unitCode=String(p.barcode||'').trim(); const pieceCode=String(p.pieceBarcode||'').trim(); if(unitCode && unitCode===c) return {product:p,variant:null,isVariant:false,barcodeMode:'unit'}; if(pieceCode && pieceCode!==unitCode && pieceCode===c) return {product:p,variant:null,isVariant:false,barcodeMode:'piece'}; const v=productVariants(p).find(x=>{ const vu=String(x.barcode||'').trim(); const vp=String(x.pieceBarcode||'').trim(); return (vu && vu===c) || (vp && vp!==vu && vp===c); }); if(v){ const vu=String(v.barcode||'').trim(); const vp=String(v.pieceBarcode||'').trim(); const mode=(vu && vu===c)?'unit':'piece'; return {product:p,variant:v,isVariant:true,barcodeMode:mode}; } } return null; }
+  function findBarcodeProduct(code){
+    const c=toLatinDigits(code).trim(); if(!c) return null;
+    for(const p of coll('products')){
+      const unitCode=toLatinDigits(p.barcode||'').trim();
+      const pieceCode=toLatinDigits(p.pieceBarcode||'').trim();
+
+      // إذا تطابق باركود القطعة مع باركود الوحدة، نعتمده كقطعة افتراضياً في الكاشير.
+      if(pieceCode && pieceCode===c) return {product:p,variant:null,isVariant:false,barcodeMode:'piece'};
+      if(unitCode && unitCode===c) return {product:p,variant:null,isVariant:false,barcodeMode:'unit'};
+
+      const v=productVariants(p).find(x=>{
+        const vu=toLatinDigits(x.barcode||'').trim();
+        const vp=toLatinDigits(x.pieceBarcode||'').trim();
+        return (vp && vp===c) || (vu && vu===c);
+      });
+      if(v){
+        const vu=toLatinDigits(v.barcode||'').trim();
+        const vp=toLatinDigits(v.pieceBarcode||'').trim();
+
+        // نفس القاعدة للأصناف: لو الباركودين نفس بعض، يبدأ كقطعة.
+        const mode=(vp && vp===c)?'piece':'unit';
+        return {product:p,variant:v,isVariant:true,barcodeMode:mode};
+      }
+    }
+    return null;
+  }
   function productSellData(p, variantId=''){ const v=getProductVariant(p,variantId); return v ? {...p,...v,id:p.id,productId:p.id,variantId:v.id,variantLabel:variantLabel(v),image:p.image,name:p.name} : {...p,variantId:'',variantLabel:''}; }
   function cartLineProduct(line){ const p=coll('products').find(x=>String(x.id)===String(line.productId)); const v=p ? getProductVariant(p,line.variantId) : null; return {p,v,data:p?productSellData(p,line.variantId):null}; }
   function lineDisplayName(line){ if(line?.variantId && line.variantLabel) return line.variantLabel; return line?.name||'صنف'; }
