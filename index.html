@@ -477,6 +477,19 @@ body{margin:0;background:linear-gradient(160deg,#eaf4ff,#f8fafc);font-family:'Ca
   }
 }
 
+
+/* اعتماد عرض نسخة 17 مع زيادة حد سلة الكاشير في اللابتوب فقط */
+@media(min-width:901px){
+  #cartLines{
+    max-height:min(72vh,720px)!important;
+  }
+}
+@media(max-width:560px){
+  #cartLines{
+    max-height:44vh!important;
+  }
+}
+
 </style></head>
 <body><div id="toast" class="toast"></div><main class="login-shell"><section class="login-card"><div class="brand" style="margin-bottom:18px"><div class="brand-logo">O</div><div><h1>أوسكار</h1><p>تسجيل الدخول</p></div></div><form id="loginForm" autocomplete="off"><div class="field"><label>مفتاح الشركة</label><input class="input" id="companyKey" name="company_key_manual" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text"></div><div class="field"><label>اسم المستخدم</label><input class="input" id="username" name="user_manual" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false"></div><div class="field"><label>كلمة المرور</label><input class="input" id="password" name="pass_manual" type="password" autocomplete="new-password"></div><button class="primary-btn" id="loginBtn" type="submit">تسجيل الدخول</button></form></section></main><script>
 const firebaseConfig = {apiKey:"AIzaSyABeNXngGQW6Vd8tH5O1KP_dG_xYsLUjm0",authDomain:"anwar-e5aca.firebaseapp.com",projectId:"anwar-e5aca",databaseURL:"https://anwar-e5aca-default-rtdb.southamerica-east1.firebasedatabase.app",storageBucket:"anwar-e5aca.firebasestorage.app",messagingSenderId:"867794060996",appId:"1:867794060996:web:6ce6feeb35684972856b91",measurementId:"G-W124E3585D"};
