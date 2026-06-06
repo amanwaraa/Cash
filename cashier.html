@@ -402,6 +402,63 @@
   }
 }
 
+
+/* واجهة اللابتوب: القائمة الجانبية ثابتة + سلة الكاشير داخل حد قابل للتمرير */
+#cartLines{
+  max-height:min(52vh,540px);
+  overflow-y:auto;
+  overscroll-behavior:auto;
+  padding-left:4px;
+  scrollbar-width:thin;
+  scroll-behavior:smooth;
+}
+#cartLines::-webkit-scrollbar{width:7px}
+#cartLines::-webkit-scrollbar-thumb{background:rgba(148,163,184,.55);border-radius:999px}
+#cartLines::-webkit-scrollbar-track{background:rgba(148,163,184,.10);border-radius:999px}
+@media(min-width:901px){
+  .sidebar{
+    right:0!important;
+    width:300px!important;
+    max-width:300px!important;
+    box-shadow:none!important;
+    border-left:1px solid var(--line)!important;
+  }
+  .main{
+    margin-right:320px!important;
+    max-width:calc(100% - 340px)!important;
+  }
+  #menuBtn,.side-close,#sideOverlay{
+    display:none!important;
+  }
+  .overlay.show{display:none!important}
+}
+@media(max-width:560px){
+  #cartLines{
+    max-height:44vh;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+}
+
+
+/* أزرار الخصم والتعليق تمتد على عرض قسم السلة في اللابتوب والجوال */
+.cart-action-row{
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:10px!important;
+}
+.cart-action-row .soft-action-btn{
+  width:100%!important;
+  min-width:0!important;
+}
+@media(max-width:560px){
+  .cart-action-row{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:8px!important;
+  }
+}
+
 </style>
 </head>
 <body data-page="cashier">
@@ -423,7 +480,7 @@
   <div class="card">
     <div class="toolbar"><h3 class="section-title">السلة والمسح</h3><button class="ghost-btn" data-action="pairPhone">ربط جوال</button><button class="ghost-btn" data-action="openCashierCamera"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h2l1.4-2h4.2L15.5 6h2A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-8Zm8 7a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/></svg></span> كاميرا سريعة</button><button class="ghost-btn" data-action="addCustomLine">فاتورة بدون مخزون</button><button class="danger-btn" data-action="clearCart">تفريغ</button></div>
     <div class="field"><label>قارئ الباركود المباشر</label><input class="input" id="cashierBarcode" placeholder="مرر جهاز الباركود هنا أو اكتب الرقم"></div>
-    <div id="cartLines" style="margin-top:14px"></div>
+    <div id="cartLines" tabindex="0" style="margin-top:14px"></div>
     <div class="cart-action-row"><button class="soft-action-btn discount" data-action="openDiscountModal"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 7h.01M17 17h.01"/><path d="m6 12 6-6 6 6-6 6-6-6Z"/></svg></span><span id="cartDiscountBtnLabel">خصم</span></button><button class="soft-action-btn draft" data-action="saveDraftInvoice"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6V3Z"/><path d="M9 12h6M9 16h4M15 3v4h4"/></svg></span><span id="cartDraftBtnLabel">تعليق</span></button></div>
     <div class="summary-box" style="margin-top:12px"><div class="sum-row muted"><span>الإجمالي قبل الخصم</span><b id="invoiceSubTotal">₪ 0.00</b></div><div class="sum-row muted"><span>الخصم</span><b id="invoiceDiscount">₪ 0.00</b></div><div class="sum-row"><span>الإجمالي النهائي</span><b id="invoiceTotal">₪ 0.00</b></div><div class="sum-row"><span>المتبقي كدين</span><b id="invoiceRemaining">₪ 0.00</b></div><div class="sum-row"><span>الربح التقريبي</span><b id="invoiceProfit">₪ 0.00</b></div></div>
   </div>
@@ -1177,7 +1234,7 @@ const App = (() => {
   function initUI(){
     document.documentElement.dataset.theme=localStorage.getItem('theme')||'light';
     $$('.nav-link').forEach(a=>{ if(a.dataset.page===state.page) a.classList.add('active') }); hideByPermissions(); applyStoreName(); initSmartSelects(document);
-    $('#menuBtn')?.addEventListener('click',()=>toggleSide(true)); $('#sideOverlay')?.addEventListener('click',()=>toggleSide(false)); $('#closeSide')?.addEventListener('click',()=>toggleSide(false));
+    $('#menuBtn')?.addEventListener('click',()=>{ if(matchMedia('(min-width:901px)').matches) return; toggleSide(true); }); $('#sideOverlay')?.addEventListener('click',()=>toggleSide(false)); $('#closeSide')?.addEventListener('click',()=>toggleSide(false));
     $('#themeBtn')?.addEventListener('click',toggleTheme); $('#syncBtn')?.addEventListener('click',()=>runFullSync(true));
     window.addEventListener('online',()=>{state.syncError=''; state.firebaseReady=false; updateStatus(); setTimeout(()=>runFullSync(false),250); toast('عاد الاتصال، سيتم رفع البيانات المحلية تلقائياً')});
     window.addEventListener('offline',()=>{state.syncError=''; updateStatus(); saveStore(false); toast('وضع بدون إنترنت: يمكنك البيع والإضافة والحذف محلياً','warn')});
@@ -1185,6 +1242,7 @@ const App = (() => {
     document.addEventListener('click', handleGlobalClick);
     document.addEventListener('keydown', handleBarcodeScannerInput, true);
     document.addEventListener('keydown', handleKeyboardShortcuts);
+    document.addEventListener('keydown', handleCartScrollKeys);
     document.addEventListener('input', handleGlobalInput);
     document.addEventListener('change', handleGlobalInput);
     state.bc = 'BroadcastChannel' in window ? new BroadcastChannel('oscar-scanner') : null;
@@ -1279,26 +1337,112 @@ const App = (() => {
     if(a){e.preventDefault(); e.stopPropagation(); shortcutRun(a);}
   }
   function renderShortcuts(){ const root=$('#shortcutsList'); if(!root) return; root.innerHTML=`<div class="table-wrap"><table><thead><tr><th>الاختصار</th><th>الوظيفة</th></tr></thead><tbody>${shortcutList.map(x=>`<tr><td><span class="shortcut-kbd">${esc(x[0])}</span></td><td><b>${esc(x[1])}</b></td></tr>`).join('')}</tbody></table></div>`; }
-  const barcodeWedge={text:'',last:0,timer:null};
-  function resetBarcodeWedge(){ barcodeWedge.text=''; barcodeWedge.last=0; if(barcodeWedge.timer) clearTimeout(barcodeWedge.timer); barcodeWedge.timer=null; }
+  const barcodeWedge={text:'',last:0,timer:null,target:null};
+  function resetBarcodeWedge(){ barcodeWedge.text=''; barcodeWedge.last=0; barcodeWedge.target=null; if(barcodeWedge.timer) clearTimeout(barcodeWedge.timer); barcodeWedge.timer=null; }
+  function isBarcodeField(el){
+    if(!el || !('value' in el)) return false;
+    const id=String(el.id||'').toLowerCase();
+    const name=String(el.name||'').toLowerCase();
+    const ph=String(el.getAttribute?.('placeholder')||'').toLowerCase();
+    const label=String(el.closest?.('.field')?.querySelector?.('label')?.textContent||'').toLowerCase();
+    return /barcode|باركود/.test(id+' '+name+' '+ph+' '+label);
+  }
+  function commitBarcodeScan(code,target=null){
+    code=toLatinDigits(code).trim();
+    if(!code || code.length<3) return;
+    const active=target || document.activeElement;
+    if(isBarcodeField(active)){
+      active.value=code;
+      active.dispatchEvent(new Event('input',{bubbles:true}));
+      active.dispatchEvent(new Event('change',{bubbles:true}));
+      active.focus();
+      toast('تم تعبئة الباركود');
+      return;
+    }
+    if(state.page==='cashier') addBarcodeToCashier(code,'قارئ باركود');
+  }
   function handleBarcodeScannerInput(e){
-    if(state.page!=='cashier') return;
     if(e.ctrlKey||e.metaKey||e.altKey) return;
-    const target=e.target; const tag=(target?.tagName||'').toLowerCase(); const isBarcodeInput=target?.id==='cashierBarcode';
+    const target=e.target;
+    const tag=(target?.tagName||'').toLowerCase();
     const typing=['input','textarea','select'].includes(tag)||target?.isContentEditable;
-    if(isBarcodeInput) return;
-    if(typing) return;
-    const key=e.key; const now=Date.now();
+    const barcodeTarget=isBarcodeField(target);
+    const key=e.key;
+    const now=Date.now();
+
+    // دعم القارئ داخل حقل الباركود: يملأ الحقل المختار مباشرة عند Enter/Tab.
+    if(barcodeTarget){
+      if(key==='Enter' || key==='Tab'){
+        const direct=toLatinDigits(target.value||barcodeWedge.text||'').trim();
+        if(direct){ e.preventDefault(); resetBarcodeWedge(); commitBarcodeScan(direct,target); }
+      }
+      return;
+    }
+
+    // إذا كان المستخدم يكتب في حقل عادي لا نلتقط إلا لو كانت سرعة الإدخال تشبه قارئ باركود.
+    if(typing && now-barcodeWedge.last>80) return;
+
     if(key==='Enter' || key==='Tab'){
-      if(barcodeWedge.text.length>=3){ e.preventDefault(); const code=barcodeWedge.text.trim(); resetBarcodeWedge(); if(code) addBarcodeToCashier(code,'قارئ باركود'); }
+      if(barcodeWedge.text.length>=3){
+        e.preventDefault();
+        const code=barcodeWedge.text.trim();
+        const scanTarget=barcodeWedge.target;
+        resetBarcodeWedge();
+        commitBarcodeScan(code,scanTarget);
+      }
       return;
     }
     if(!key || key.length!==1) return;
-    if(now-barcodeWedge.last>120) barcodeWedge.text='';
-    barcodeWedge.text+=key; barcodeWedge.last=now;
+    if(now-barcodeWedge.last>120){ barcodeWedge.text=''; barcodeWedge.target=null; }
+    barcodeWedge.text+=key;
+    barcodeWedge.last=now;
+    barcodeWedge.target=barcodeTarget?target:null;
     if(barcodeWedge.text.length>=3) e.preventDefault();
     if(barcodeWedge.timer) clearTimeout(barcodeWedge.timer);
-    barcodeWedge.timer=setTimeout(()=>{ const code=barcodeWedge.text.trim(); resetBarcodeWedge(); if(code.length>=5) addBarcodeToCashier(code,'قارئ باركود'); },90);
+    barcodeWedge.timer=setTimeout(()=>{
+      const code=barcodeWedge.text.trim();
+      const scanTarget=barcodeWedge.target;
+      resetBarcodeWedge();
+      if(code.length>=5) commitBarcodeScan(code,scanTarget);
+    },90);
+  }
+  function handleCartScrollKeys(e){
+    if(state.page!=='cashier') return;
+    const tag=(e.target?.tagName||'').toLowerCase();
+    const typing=['input','textarea','select'].includes(tag)||e.target?.isContentEditable;
+    if(typing) return;
+    const box=$('#cartLines'); if(!box) return;
+    const max=Math.max(0, box.scrollHeight-box.clientHeight);
+    const atTop=box.scrollTop<=1;
+    const atBottom=box.scrollTop>=max-1;
+    const step=90;
+    const pageStep=box.clientHeight*.85;
+
+    // إذا وصلت السلة للأعلى أو الأسفل، لا نمنع الحدث حتى تكمل الصفحة نفسها بالتمرير.
+    if(e.key==='ArrowDown'){
+      if(!atBottom){ e.preventDefault(); box.scrollBy({top:step,behavior:'smooth'}); }
+      return;
+    }
+    if(e.key==='ArrowUp'){
+      if(!atTop){ e.preventDefault(); box.scrollBy({top:-step,behavior:'smooth'}); }
+      return;
+    }
+    if(e.key==='PageDown'){
+      if(!atBottom){ e.preventDefault(); box.scrollBy({top:pageStep,behavior:'smooth'}); }
+      return;
+    }
+    if(e.key==='PageUp'){
+      if(!atTop){ e.preventDefault(); box.scrollBy({top:-pageStep,behavior:'smooth'}); }
+      return;
+    }
+    if(e.key==='Home'){
+      if(!atTop){ e.preventDefault(); box.scrollTo({top:0,behavior:'smooth'}); }
+      return;
+    }
+    if(e.key==='End'){
+      if(!atBottom){ e.preventDefault(); box.scrollTo({top:box.scrollHeight,behavior:'smooth'}); }
+      return;
+    }
   }
 
   function handleGlobalClick(e){
