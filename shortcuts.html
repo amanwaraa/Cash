@@ -176,7 +176,7 @@
 
 </style>
 </head>
-<body data-page="cashier">
+<body data-page="shortcuts">
   <div id="toast" class="toast"></div>
   <div class="app">
     <aside id="sidebar" class="sidebar">
@@ -189,34 +189,8 @@
       <header class="top-card no-print">
         <div class="brand"><button id="menuBtn" class="icon-btn">☰</button><div><h1>الكاشير</h1><small>مسح باركود، بيع بالكسور، حفظ وطباعة فواتير.</small></div></div>
         <div class="top-actions"><button id="syncBtn" class="icon-btn sync-dot-btn" title="المزامنة"><span id="netDot" class="dot"></span><small id="pendingCount" class="hidden"></small></button><button id="themeBtn" class="icon-btn theme-icon-btn" title="الوضع الليلي"><svg class="theme-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.8 6.8 0 0 0 9.8 9.8Z"/></svg></button></div></header>
-      <section class="page-head"><div><h2 class="page-title">الكاشير</h2><p class="page-sub">مسح باركود، بيع بالكسور، حفظ وطباعة فواتير.</p></div></section>
-      <section id="pageRoot">
-<div id="cashierRoot" class="two-col">
-  <div class="card">
-    <div class="toolbar"><h3 class="section-title">السلة والمسح</h3><button class="ghost-btn" data-action="pairPhone">ربط جوال</button><button class="ghost-btn" data-action="openCashierCamera"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h2l1.4-2h4.2L15.5 6h2A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-8Zm8 7a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/></svg></span> كاميرا سريعة</button><button class="ghost-btn" data-action="addCustomLine">فاتورة بدون مخزون</button><button class="danger-btn" data-action="clearCart">تفريغ</button></div>
-    <div class="field"><label>قارئ الباركود المباشر</label><input class="input" id="cashierBarcode" placeholder="مرر جهاز الباركود هنا أو اكتب الرقم"></div>
-    <div id="cartLines" style="margin-top:14px"></div>
-    <div class="cart-action-row"><button class="soft-action-btn discount" data-action="openDiscountModal"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 7h.01M17 17h.01"/><path d="m6 12 6-6 6 6-6 6-6-6Z"/></svg></span><span id="cartDiscountBtnLabel">خصم</span></button><button class="soft-action-btn draft" data-action="saveDraftInvoice"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6V3Z"/><path d="M9 12h6M9 16h4M15 3v4h4"/></svg></span><span id="cartDraftBtnLabel">تعليق</span></button></div>
-    <div class="summary-box" style="margin-top:12px"><div class="sum-row muted"><span>الإجمالي قبل الخصم</span><b id="invoiceSubTotal">₪ 0.00</b></div><div class="sum-row muted"><span>الخصم</span><b id="invoiceDiscount">₪ 0.00</b></div><div class="sum-row"><span>الإجمالي النهائي</span><b id="invoiceTotal">₪ 0.00</b></div><div class="sum-row"><span>المتبقي كدين</span><b id="invoiceRemaining">₪ 0.00</b></div><div class="sum-row"><span>الربح التقريبي</span><b id="invoiceProfit">₪ 0.00</b></div></div>
-  </div>
-  <div class="card">
-    <h3 class="section-title">بطاقة البيانات</h3>
-    <div class="form-grid">
-      <input type="hidden" id="cashierCustomerId"><div class="field suggest-wrap"><label>اسم العميل</label><input class="input" id="customerName" autocomplete="off" placeholder="اكتب أول حرف للبحث أو اكتب اسم عميل جديد"><div id="customerSuggestPanel" class="suggest-panel"></div></div>
-      <div class="field"><label>رقم الجوال</label><input class="input" id="customerPhone" autocomplete="off" placeholder="اختياري / يظهر مع الاقتراح"></div>
-      <div class="field"><label>المبلغ المدفوع</label><input class="input" type="number" step="0.01" id="paidAmount" value="0"></div>
-      <div class="field smart-field"><label>الحساب</label><div class="smart-select" data-select-id="cashierAccount"><input class="input smart-input" id="cashierAccount_search" placeholder="اضغط لعرض الحسابات أو اكتب للبحث"><input type="hidden" id="cashierAccount" value="cash"><div class="smart-options"></div></div></div>
-      <div class="field"><label>التاريخ</label><input class="input" value="تلقائي" readonly></div>
-      <div class="field"><label>الحالة</label><input class="input" id="invoiceStatusField" value="جاهزة للحفظ" readonly></div>
-    </div>
-    <div class="cashier-save-actions"><button class="warn-btn" id="saveDraftBtn" data-action="saveDraftInvoice">تعليق</button><button class="primary-btn" id="saveInvoiceBtn" data-action="saveInvoice">حفظ الفاتورة</button></div>
-  </div>
-</div>
-<div class="card" style="margin-top:16px">
-  <div class="toolbar"><h3 class="section-title">المنتجات الأكثر طلباً</h3><div class="searchbar"><input class="input" id="cashierProductSearch" oninput="App.renderCashier()" placeholder="بحث عن منتج"></div></div>
-  <div id="cashierProducts" class="products-grid"></div>
-</div>
-</section>
+      <section class="page-head"><div><h2 class="page-title">اختصارات الكاشير</h2><p class="page-sub">دليل سريع لكل اختصارات لوحة المفاتيح والتنقل وتنفيذ العمليات.</p></div></section>
+      <section id="pageRoot"><div class="card"><div class="toolbar"><h3 class="section-title">دليل الاختصارات</h3><button class="primary-btn" data-action="addInvoice">فتح الكاشير</button></div><div id="shortcutsList" class="shortcuts-grid"></div></div></section>
     </main>
     <nav class="bottom-nav no-print"><a href="dashboard.html" class="nav-link" data-page="dashboard"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5v8a1.5 1.5 0 0 1-1.5 1.5H15v-6H9v6H4.5A1.5 1.5 0 0 1 3 19.5v-8Z"/></svg></span><small>الرئيسية</small></a><a href="cashier.html" class="nav-link" data-page="cashier" data-permission="viewSales"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 0 1 1 1v17l-3-1.5-3 1.5-3-1.5L7 21V4a1 1 0 0 1 1-1Zm3 5h6M9 12h6M9 16h4"/></svg></span><small>الكاشير</small></a><a href="products.html" class="nav-link" data-page="products" data-permission="viewProducts"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 0v9m8-4.5-8 4.5-8-4.5"/></svg></span><small>المنتجات</small></a><a href="customers.html" class="nav-link" data-page="customers" data-permission="viewCustomers"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0ZM4 21a8 8 0 0 1 16 0M18 8a3 3 0 0 1 3 3M21 21a6 6 0 0 0-4-5.66"/></svg></span><small>العملاء</small></a><a href="accounts.html" class="nav-link" data-page="accounts" data-permission="manageAccounts"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h13A2.5 2.5 0 0 1 21 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5v-9Zm0 3h18M7 15h4"/></svg></span><small>الحسابات</small></a><a href="invoices.html" class="nav-link" data-page="invoices" data-permission="viewSales"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1-2 1-2-1-2 1-2-1-2 1V3Zm4 5h6M8 12h8M8 16h5"/></svg></span><small>الفواتير</small></a></nav>
   </div>
