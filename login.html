@@ -626,6 +626,32 @@ body{margin:0;background:linear-gradient(160deg,#eaf4ff,#f8fafc);font-family:'Ca
   margin-inline-start:4px!important;
 }
 
+
+/* ضبط زر إضافة الصنف وحذف أيقونات عناوين الباركود */
+.add-variant-field{
+  grid-column:1/-1!important;
+}
+.add-variant-field .product-add-variant-btn,
+.product-add-variant-btn{
+  width:100%!important;
+  min-width:0!important;
+  padding-inline:28px!important;
+  min-height:58px!important;
+  justify-content:center!important;
+  gap:14px!important;
+  box-sizing:border-box!important;
+}
+.variant-actions .product-add-variant-btn{
+  min-width:220px!important;
+}
+@media(max-width:560px){
+  .add-variant-field .product-add-variant-btn,
+  .product-add-variant-btn{
+    padding-inline:18px!important;
+    font-size:14px!important;
+  }
+}
+
 </style><link rel="icon" type="image/png" sizes="64x64" href="icon-64.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#2563eb">

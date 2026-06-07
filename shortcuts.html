@@ -666,6 +666,32 @@
   margin-inline-start:4px!important;
 }
 
+
+/* ضبط زر إضافة الصنف وحذف أيقونات عناوين الباركود */
+.add-variant-field{
+  grid-column:1/-1!important;
+}
+.add-variant-field .product-add-variant-btn,
+.product-add-variant-btn{
+  width:100%!important;
+  min-width:0!important;
+  padding-inline:28px!important;
+  min-height:58px!important;
+  justify-content:center!important;
+  gap:14px!important;
+  box-sizing:border-box!important;
+}
+.variant-actions .product-add-variant-btn{
+  min-width:220px!important;
+}
+@media(max-width:560px){
+  .add-variant-field .product-add-variant-btn,
+  .product-add-variant-btn{
+    padding-inline:18px!important;
+    font-size:14px!important;
+  }
+}
+
 </style>
 <link rel="icon" type="image/png" sizes="64x64" href="icon-64.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -1912,7 +1938,10 @@ const App = (() => {
   function optionLabel(rows, selected=''){ const r=(rows||[]).find(x=>String(x.id)===String(selected)); return r ? `${r.name||r.title||r.phone||r.id}${r.balance!==undefined?' - '+money(r.balance):''}` : ''; }
   function smartOptions(rows, selected=''){ return (rows||[]).map(x=>{const label=`${x.name||x.title||x.phone||x.id}${x.balance!==undefined?' - '+money(x.balance):''}`; return `<button type="button" class="smart-option ${String(x.id)===String(selected)?'active':''}" data-value="${esc(x.id)}" data-label="${esc(label)}"><span>${esc(label)}</span><small>${esc(x.id)}</small></button>`}).join('') || '<div class="empty" style="padding:12px">لا توجد بيانات</div>'; }
   function selectWithSearch(id,label,rows,selected=''){
-    if(isAccountSelect(id,label,rows) && !selected) selected=defaultAccountId();
+    if(isAccountSelect(id,label,rows)){
+      const preferred=defaultAccountId();
+      if(!selected || (String(selected)==='cash' && preferred && preferred!=='cash')) selected=preferred;
+    }
     const selectedLabel=optionLabel(rows,selected);
     return `<div class="field smart-field"><label>${label}</label><div class="smart-select" data-select-id="${id}"><input class="input smart-input" id="${id}_search" value="${esc(selectedLabel)}" data-selected-label="${esc(selectedLabel)}" data-user-selected="0" placeholder="اضغط لعرض الاقتراحات أو اكتب للبحث" autocomplete="off"><input type="hidden" id="${id}" value="${esc(selected||'')}"><div class="smart-options">${smartOptions(rows,selected)}</div></div></div>`
   }
@@ -1935,13 +1964,24 @@ const App = (() => {
   function refreshSmartSelect(id, rows, selected=''){
     const sel=document.querySelector(`.smart-select[data-select-id="${id}"]`); if(!sel) return;
     const hidden=sel.querySelector(`#${id}`), input=sel.querySelector('.smart-input'), menu=sel.querySelector('.smart-options');
-    const value=selected || hidden?.value || (isAccountSelect(id,'حساب',rows)?defaultAccountId():'');
+    const isAcc=isAccountSelect(id,'حساب',rows);
+    const preferred=isAcc?defaultAccountId():'';
+    let value=selected || hidden?.value || (isAcc?preferred:'');
+    if(isAcc && (!value || (String(value)==='cash' && preferred && preferred!=='cash'))) value=preferred;
     const label=optionLabel(rows,value);
     if(hidden) hidden.value=value;
     if(input){ input.dataset.selectedLabel=label; if(document.activeElement!==input) input.value=label; }
     if(menu) menu.innerHTML=smartOptions(rows,value);
   }
   document.addEventListener('click',e=>{ if(!e.target.closest('.smart-select')) document.querySelectorAll('.smart-select.open').forEach(x=>{x.classList.remove('open'); const inp=x.querySelector('.smart-input'), hid=x.querySelector('input[type="hidden"]'); if(inp && hid && !inp.value.trim() && hid.value) inp.value=inp.dataset.selectedLabel||'';}); if(!e.target.closest('.suggest-wrap')) document.querySelectorAll('.suggest-panel').forEach(x=>x.classList.remove('show')); });
+  function handleGlobalAccountRemember(e){
+    const el=e.target;
+    if(!el || !('value' in el)) return;
+    const blob=[el.id,el.name,el.getAttribute?.('placeholder'),el.closest?.('.field')?.querySelector?.('label')?.textContent].join(' ');
+    if(/account|حساب/i.test(blob)) rememberAccountId(el.value);
+  }
+  document.addEventListener('change',handleGlobalAccountRemember);
+
   document.addEventListener('focusin',e=>{
     if(e.target && (e.target.id==='customerName' || e.target.id==='customerPhone')) renderCustomerSuggestions(e.target.value, false);
   });
@@ -2173,8 +2213,8 @@ const App = (() => {
       <div class="field variant-unit-fields"><label>كم قطعة في الوحدة</label><input class="input vPerUnit" type="text" inputmode="decimal" data-number="1" step="0.001" value="${per}"></div>
       <div class="field variant-unit-fields"><label>سعر الوحدة جملة</label><input class="input vUnitBuy" type="text" inputmode="decimal" data-number="1" step="0.01" value="${unitBuy}"></div>
       <div class="field variant-unit-fields"><label>سعر الوحدة بيع</label><input class="input vUnitSale" type="text" inputmode="decimal" data-number="1" step="0.01" value="${unitSale}"></div>
-      <div class="field variant-unit-fields"><label>${barcodeSvg} باركود الصنف ك وحدة</label><div class="inline-icon-input"><input class="input vBarcode" value="${unitBarcode}" placeholder="باركود الوحدة للصنف"><button class="icon-btn" type="button" onclick="App.scanVariantBarcode(this,'unit')" title="مسح باركود وحدة الصنف">${barcodeSvg}</button></div></div>
-      <div class="field"><label>${barcodeSvg} باركود الصنف ك قطعة</label><div class="inline-icon-input"><input class="input vPieceBarcode" value="${pieceBarcode}" placeholder="اتركه فارغاً ليأخذ باركود الوحدة"><button class="icon-btn" type="button" onclick="App.scanVariantBarcode(this,'piece')" title="مسح باركود قطعة الصنف">${barcodeSvg}</button></div></div>
+      <div class="field variant-unit-fields"><label>باركود الصنف ك وحدة</label><div class="inline-icon-input"><input class="input vBarcode" value="${unitBarcode}" placeholder="باركود الوحدة للصنف"><button class="icon-btn" type="button" onclick="App.scanVariantBarcode(this,'unit')" title="مسح باركود وحدة الصنف">${barcodeSvg}</button></div></div>
+      <div class="field"><label>باركود الصنف ك قطعة</label><div class="inline-icon-input"><input class="input vPieceBarcode" value="${pieceBarcode}" placeholder="اتركه فارغاً ليأخذ باركود الوحدة"><button class="icon-btn" type="button" onclick="App.scanVariantBarcode(this,'piece')" title="مسح باركود قطعة الصنف">${barcodeSvg}</button></div></div>
       <div class="field variant-actions"><button class="danger-btn" type="button" onclick="App.removeProductVariantRow(this)">${trashSvg} حذف الصنف</button><button class="primary-btn product-add-variant-btn" type="button" onclick="App.addProductVariantRow(this)">${plusSvg} إضافة صنف آخر</button></div>
     </div>`;
   }
@@ -2674,7 +2714,7 @@ const App = (() => {
     const p=coll('products').find(x=>String(x.id)===String(id))||{name:'',image:'',barcode:'',pieceBarcode:'',supplierId:'',accountId:'cash',mode:'piece',stock:0,purchasePrice:0,salePrice:0,category:'',unitName:'',piecesPerUnit:1,unitBuy:0,unitSale:0,purchasePaid:0,purchaseDebt:0,variants:[]};
     const variantsHtml=productVariants(p).map(v=>productFormVariantHtml(v)).join('') || '<div class="empty">لا يوجد أصناف إضافية بعد</div>';
     const barcodeSvg='<span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5v14M8 5v14M11 5v14M15 5v14M20 5v14"/><path d="M3 3h4M17 3h4M3 21h4M17 21h4"/></svg></span>';
-    const html=`<div class="form-grid"><div class="field"><label>اسم المنتج</label><input class="input" id="pName" value="${esc(p.name)}"></div><div class="field"><label>رابط صورة المنتج</label><input class="input" id="pImage" value="${esc(p.image)}"></div><div class="field"><label>طريقة الإضافة</label><select id="productAddMode"><option value="piece" ${p.mode!=='unit'?'selected':''}>قطعة</option><option value="unit" ${p.mode==='unit'?'selected':''}>وحدة / كرتونة</option></select></div><div class="field piece-fields"><label>عدد القطع للمخزون الرئيسي</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.001" id="pPieces" value="${n(p.stock)}"></div><div class="field piece-fields"><label>سعر الشراء للقطعة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pBuyPiece" value="${n(p.purchasePrice)}"></div><div class="field piece-fields"><label>سعر البيع للقطعة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pSalePiece" value="${n(p.salePrice)}"></div><div class="field unit-fields hidden"><label>اسم الوحدة</label><input class="input" id="pUnitName" value="${esc(p.unitName||'كرتونة')}"></div><div class="field unit-fields hidden"><label>عدد الوحدات</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.001" id="pUnits" value="${n(p.units||0)}"></div><div class="field unit-fields hidden"><label>كم قطعة في الوحدة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.001" id="pPerUnit" value="${n(p.piecesPerUnit||1)}"></div><div class="field unit-fields hidden"><label>سعر الوحدة جملة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pUnitBuy" value="${n(p.unitBuy)}"></div><div class="field unit-fields hidden"><label>سعر الوحدة بيع</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pUnitSale" value="${n(p.unitSale)}"></div><div class="field unit-fields hidden"><label>${barcodeSvg} باركود الوحدة</label><div style="display:flex;gap:8px"><input class="input" id="productBarcode" value="${esc(p.barcode)}" placeholder="باركود الكرتونة / الوحدة"><button class="icon-btn" data-action="scanProductBarcode" type="button" title="مسح باركود الوحدة">${barcodeSvg}</button></div></div><div class="field"><label>${barcodeSvg} باركود القطعة</label><div style="display:flex;gap:8px"><input class="input" id="productPieceBarcode" value="${esc(p.pieceBarcode||'')}" placeholder="اتركه فارغاً ليأخذ باركود الوحدة"><button class="icon-btn" data-action="scanProductPieceBarcode" type="button" title="مسح باركود القطعة">${barcodeSvg}</button></div></div><div class="field"><label>&nbsp;</label><button class="primary-btn product-add-variant-btn" type="button" onclick="App.addProductVariantRow()"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span> إضافة&nbsp;صنف&nbsp;/&nbsp;طعم&nbsp;/&nbsp;حجم</button></div></div><div class="card" style="margin-top:12px"><b>الأصناف الإضافية لنفس الاسم والصورة:</b><div id="productVariantsBox" class="variant-list">${variantsHtml}</div></div><div class="form-grid product-tail-grid">${selectWithSearch('pSupplier','المورد',coll('suppliers'),p.supplierId)}${selectWithSearch('pAccount','الحساب المخصوم منه',coll('accounts'),p.accountId||defaultAccountId())}<div class="field"><label>التصنيف</label><input class="input" id="pCat" value="${esc(p.category)}"></div><div class="field"><label>المدفوع من المبلغ</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pPaid" value="${id?n(p.purchasePaid):''}"></div></div><div class="card" style="margin-top:12px"><b>الحساب التلقائي:</b> <span id="productCalc">—</span></div>`;
+    const html=`<div class="form-grid"><div class="field"><label>اسم المنتج</label><input class="input" id="pName" value="${esc(p.name)}"></div><div class="field"><label>رابط صورة المنتج</label><input class="input" id="pImage" value="${esc(p.image)}"></div><div class="field"><label>طريقة الإضافة</label><select id="productAddMode"><option value="piece" ${p.mode!=='unit'?'selected':''}>قطعة</option><option value="unit" ${p.mode==='unit'?'selected':''}>وحدة / كرتونة</option></select></div><div class="field piece-fields"><label>عدد القطع للمخزون الرئيسي</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.001" id="pPieces" value="${n(p.stock)}"></div><div class="field piece-fields"><label>سعر الشراء للقطعة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pBuyPiece" value="${n(p.purchasePrice)}"></div><div class="field piece-fields"><label>سعر البيع للقطعة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pSalePiece" value="${n(p.salePrice)}"></div><div class="field unit-fields hidden"><label>اسم الوحدة</label><input class="input" id="pUnitName" value="${esc(p.unitName||'كرتونة')}"></div><div class="field unit-fields hidden"><label>عدد الوحدات</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.001" id="pUnits" value="${n(p.units||0)}"></div><div class="field unit-fields hidden"><label>كم قطعة في الوحدة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.001" id="pPerUnit" value="${n(p.piecesPerUnit||1)}"></div><div class="field unit-fields hidden"><label>سعر الوحدة جملة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pUnitBuy" value="${n(p.unitBuy)}"></div><div class="field unit-fields hidden"><label>سعر الوحدة بيع</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pUnitSale" value="${n(p.unitSale)}"></div><div class="field unit-fields hidden"><label>باركود الوحدة</label><div style="display:flex;gap:8px"><input class="input" id="productBarcode" value="${esc(p.barcode)}" placeholder="باركود الكرتونة / الوحدة"><button class="icon-btn" data-action="scanProductBarcode" type="button" title="مسح باركود الوحدة">${barcodeSvg}</button></div></div><div class="field"><label>باركود القطعة</label><div style="display:flex;gap:8px"><input class="input" id="productPieceBarcode" value="${esc(p.pieceBarcode||'')}" placeholder="اتركه فارغاً ليأخذ باركود الوحدة"><button class="icon-btn" data-action="scanProductPieceBarcode" type="button" title="مسح باركود القطعة">${barcodeSvg}</button></div></div><div class="field full add-variant-field"><label>&nbsp;</label><button class="primary-btn product-add-variant-btn" type="button" onclick="App.addProductVariantRow()"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span> إضافة&nbsp;صنف&nbsp;/&nbsp;طعم&nbsp;/&nbsp;حجم</button></div></div><div class="card" style="margin-top:12px"><b>الأصناف الإضافية لنفس الاسم والصورة:</b><div id="productVariantsBox" class="variant-list">${variantsHtml}</div></div><div class="form-grid product-tail-grid">${selectWithSearch('pSupplier','المورد',coll('suppliers'),p.supplierId)}${selectWithSearch('pAccount','الحساب المخصوم منه',coll('accounts'),p.accountId||defaultAccountId())}<div class="field"><label>التصنيف</label><input class="input" id="pCat" value="${esc(p.category)}"></div><div class="field"><label>المدفوع من المبلغ</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pPaid" value="${id?n(p.purchasePaid):''}"></div></div><div class="card" style="margin-top:12px"><b>الحساب التلقائي:</b> <span id="productCalc">—</span></div>`;
     const box=openModal(id?'تعديل منتج':'إضافة منتج',html,'حفظ المنتج',()=>{
       const mode=$('#productAddMode').value; let stock=n($('#pPieces')?.value), buy=n($('#pBuyPiece')?.value), sale=n($('#pSalePiece')?.value), units=0, per=1, unitBuy=0, unitSale=0;
       if(mode==='unit'){units=n($('#pUnits').value); per=n($('#pPerUnit').value)||1; unitBuy=n($('#pUnitBuy').value); unitSale=n($('#pUnitSale').value); stock=units*per; buy=per?unitBuy/per:0; sale=per?unitSale/per:0;}
