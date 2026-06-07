@@ -1,4 +1,4 @@
-const CACHE_NAME = 'oscar-pwa-v6-6.4.13-local-first-delete-edit';
+const CACHE_NAME = 'oscar-pwa-v32-light-logo';
 const PRECACHE = [
   './',
   'index.html',
@@ -25,8 +25,13 @@ const PRECACHE = [
   'firestore.rules',
   'database.rules.json',
   'firestore.secure.rules',
+  'icon-64.png',
   'icon-192.png',
   'icon-512.png',
+  'oscar-logo.png',
+
+
+
   'app-version.json',
   'offline-update.js',
   'local-bridge.js'

@@ -569,9 +569,64 @@ body{margin:0;background:linear-gradient(160deg,#eaf4ff,#f8fafc);font-family:'Ca
   color:#b91c1c;
 }
 
-</style></head>
-<body><div id="toast" class="toast"></div><main class="login-shell"><section class="login-card"><div class="brand" style="margin-bottom:18px"><div class="brand-logo">O</div><div><h1>أوسكار</h1><p>تسجيل الدخول</p></div></div><form id="loginForm" autocomplete="off"><div class="field"><label>مفتاح الشركة</label><input class="input" id="companyKey" name="company_key_manual" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text"></div><div class="field"><label>اسم المستخدم</label><input class="input" id="username" name="user_manual" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false"></div><div class="field"><label>كلمة المرور</label><input class="input" id="password" name="pass_manual" type="password" autocomplete="new-password"></div><button class="primary-btn" id="loginBtn" type="submit">تسجيل الدخول</button></form></section></main><script>
-const firebaseConfig = {apiKey:"AIzaSyABeNXngGQW6Vd8tH5O1KP_dG_xYsLUjm0",authDomain:"anwar-e5aca.firebaseapp.com",projectId:"anwar-e5aca",databaseURL:"https://anwar-e5aca-default-rtdb.southamerica-east1.firebasedatabase.app",storageBucket:"anwar-e5aca.firebasestorage.app",messagingSenderId:"867794060996",appId:"1:867794060996:web:6ce6feeb35684972856b91",measurementId:"G-W124E3585D"};
+
+/* شعار كاشير أوسكار */
+.brand-logo{
+  overflow:hidden!important;
+  padding:0!important;
+  background:#0b79c8!important;
+  display:grid!important;
+  place-items:center!important;
+}
+.brand-logo img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  display:block!important;
+}
+.login-box .brand{
+  justify-content:center!important;
+  text-align:center!important;
+  flex-direction:column!important;
+  gap:12px!important;
+}
+.login-box .brand-logo{
+  width:112px!important;
+  height:112px!important;
+  border-radius:50%!important;
+  margin:0 auto 6px!important;
+  box-shadow:0 18px 44px rgba(37,99,235,.22)!important;
+}
+.top-card .brand-logo,
+.side-brand .brand-logo{
+  width:46px!important;
+  height:46px!important;
+  border-radius:16px!important;
+  flex:0 0 46px!important;
+}
+.product-add-variant-btn{
+  padding-inline:22px!important;
+  gap:10px!important;
+}
+.product-add-variant-btn .nav-ico{
+  margin-inline-start:4px!important;
+}
+
+</style><link rel="icon" type="image/png" sizes="64x64" href="icon-64.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#2563eb">
+</head>
+<body><div id="toast" class="toast"></div><main class="login-shell"><section class="login-card"><div class="brand" style="margin-bottom:18px"><div class="brand-logo"><img src="oscar-logo.png" alt="كاشير أوسكار"></div><div><h1>أوسكار</h1><p>تسجيل الدخول</p></div></div><form id="loginForm" autocomplete="off"><div class="field"><label>مفتاح الشركة</label><input class="input" id="companyKey" name="company_key_manual" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text"></div><div class="field"><label>اسم المستخدم</label><input class="input" id="username" name="user_manual" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false"></div><div class="field"><label>كلمة المرور</label><input class="input" id="password" name="pass_manual" type="password" autocomplete="new-password"></div><button class="primary-btn" id="loginBtn" type="submit">تسجيل الدخول</button></form></section></main><script>
+const firebaseConfig = {
+  apiKey: "AIzaSyABeNXngGQW6Vd8tH5O1KP_dG_xYsLUjm0",
+  authDomain: "anwar-e5aca.firebaseapp.com",
+  projectId: "anwar-e5aca",
+  databaseURL: "https://anwar-e5aca-default-rtdb.southamerica-east1.firebasedatabase.app",
+  storageBucket: "anwar-e5aca.firebasestorage.app",
+  messagingSenderId: "867794060996",
+  appId: "1:867794060996:web:6ce6feeb35684972856b91",
+  measurementId: "G-W124E3585D"
+};
 const $=s=>document.querySelector(s); const toast=(m,t='ok')=>{const el=$('#toast'); el.textContent=m; el.style.background=t==='bad'?'#b91c1c':t==='warn'?'#92400e':'#111827'; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2200)};
 const permissionCatalog=['viewSales','addSales','editSales','deleteSales','viewProducts','addProducts','editProducts','deleteProducts','viewCustomers','manageAccounts','manageSuppliers','viewReports','manageExpenses','manageSettings','manageEmployees','print','export','sync'];
 const fullPermissions=Object.fromEntries(permissionCatalog.map(k=>[k,true]));

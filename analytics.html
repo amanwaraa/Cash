@@ -623,13 +623,59 @@
   color:#b91c1c;
 }
 
+
+/* شعار كاشير أوسكار */
+.brand-logo{
+  overflow:hidden!important;
+  padding:0!important;
+  background:#0b79c8!important;
+  display:grid!important;
+  place-items:center!important;
+}
+.brand-logo img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  display:block!important;
+}
+.login-box .brand{
+  justify-content:center!important;
+  text-align:center!important;
+  flex-direction:column!important;
+  gap:12px!important;
+}
+.login-box .brand-logo{
+  width:112px!important;
+  height:112px!important;
+  border-radius:50%!important;
+  margin:0 auto 6px!important;
+  box-shadow:0 18px 44px rgba(37,99,235,.22)!important;
+}
+.top-card .brand-logo,
+.side-brand .brand-logo{
+  width:46px!important;
+  height:46px!important;
+  border-radius:16px!important;
+  flex:0 0 46px!important;
+}
+.product-add-variant-btn{
+  padding-inline:22px!important;
+  gap:10px!important;
+}
+.product-add-variant-btn .nav-ico{
+  margin-inline-start:4px!important;
+}
+
 </style>
+<link rel="icon" type="image/png" sizes="64x64" href="icon-64.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#2563eb">
 </head>
 <body data-page="analytics">
   <div id="toast" class="toast"></div>
   <div class="app">
     <aside id="sidebar" class="sidebar">
-      <div class="side-title"><div class="brand"><div class="brand-logo">O</div><div><h1 id="sideStoreName">أوسكار</h1><small>نظام إدارة المبيعات</small></div></div><button id="closeSide" class="icon-btn side-close">✕</button></div>
+      <div class="side-title"><div class="brand"><div class="brand-logo"><img src="oscar-logo.png" alt="كاشير أوسكار"></div><div><h1 id="sideStoreName">أوسكار</h1><small>نظام إدارة المبيعات</small></div></div><button id="closeSide" class="icon-btn side-close">✕</button></div>
       <nav class="side-links"><a href="dashboard.html" class="nav-link" data-page="dashboard"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5v8a1.5 1.5 0 0 1-1.5 1.5H15v-6H9v6H4.5A1.5 1.5 0 0 1 3 19.5v-8Z"/></svg></span><span>الرئيسية</span></a><a href="cashier.html" class="nav-link" data-page="cashier" data-permission="viewSales"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 0 1 1 1v17l-3-1.5-3 1.5-3-1.5L7 21V4a1 1 0 0 1 1-1Zm3 5h6M9 12h6M9 16h4"/></svg></span><span>الكاشير</span></a><a href="products.html" class="nav-link" data-page="products" data-permission="viewProducts"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 0v9m8-4.5-8 4.5-8-4.5"/></svg></span><span>المنتجات</span></a><a href="customers.html" class="nav-link" data-page="customers" data-permission="viewCustomers"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0ZM4 21a8 8 0 0 1 16 0M18 8a3 3 0 0 1 3 3M21 21a6 6 0 0 0-4-5.66"/></svg></span><span>العملاء والديون</span></a><a href="accounts.html" class="nav-link" data-page="accounts" data-permission="manageAccounts"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h13A2.5 2.5 0 0 1 21 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5v-9Zm0 3h18M7 15h4"/></svg></span><span>الحسابات</span></a><a href="suppliers.html" class="nav-link" data-page="suppliers" data-permission="manageSuppliers"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7h11v10H3V7Zm11 3h4l3 3v4h-7v-7ZM6 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm12 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg></span><span>الموردين</span></a><a href="invoices.html" class="nav-link" data-page="invoices" data-permission="viewSales"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1-2 1-2-1-2 1-2-1-2 1V3Zm4 5h6M8 12h8M8 16h5"/></svg></span><span>الفواتير</span></a><a href="inventory.html" class="nav-link" data-page="inventory" data-permission="viewProducts"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5V4Zm4 4h6M9 12h6M9 16h4"/></svg></span><span>الجرد والمخزون</span></a><a href="expenses.html" class="nav-link" data-page="expenses" data-permission="manageExpenses"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2v20M17 6H9.5a3 3 0 0 0 0 6H14a3 3 0 0 1 0 6H6"/></svg></span><span>المصروفات</span></a><a href="finance.html" class="nav-link" data-page="finance" data-permission="viewReports"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19h16M6 17V9m6 8V5m6 12v-6"/></svg></span><span>المالية</span></a><a href="analytics.html" class="nav-link" data-page="analytics" data-permission="viewReports"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V4m0 16h16M8 16l3-4 3 2 5-7"/></svg></span><span>التحليلات</span></a><a href="notifications.html" class="nav-link" data-page="notifications" data-permission="viewReports"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg></span><span>التنبيهات</span></a><a href="employees.html" class="nav-link" data-page="employees" data-permission="manageEmployees"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 9a7 7 0 0 1 14 0M18 8h3m-1.5-1.5v3"/></svg></span><span>الموظفين</span></a><a href="settings.html" class="nav-link" data-page="settings" data-permission="manageSettings"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm8-3.5 2-1.2-2-3.4-2.3 1a7.7 7.7 0 0 0-1.7-1l-.3-2.4h-4l-.3 2.4a7.7 7.7 0 0 0-1.7 1l-2.3-1-2 3.4 2 1.2a8 8 0 0 0 0 2l-2 1.2 2 3.4 2.3-1c.5.4 1.1.7 1.7 1l.3 2.4h4l.3-2.4c.6-.3 1.2-.6 1.7-1l2.3 1 2-3.4-2-1.2a8 8 0 0 0 0-2Z"/></svg></span><span>الإعدادات</span></a></nav>
       <div class="side-footer"><div id="sessionInfo">جلسة مستخدم نشطة</div><button class="ghost-btn logout-btn" data-action="logout">تسجيل الخروج</button></div>
     </aside>
@@ -649,15 +695,15 @@
   <script type="module">
 const App = (() => {
   const firebaseConfig = {
-    apiKey: "AIzaSyABeNXngGQW6Vd8tH5O1KP_dG_xYsLUjm0",
-    authDomain: "anwar-e5aca.firebaseapp.com",
-    projectId: "anwar-e5aca",
-    databaseURL: "https://anwar-e5aca-default-rtdb.southamerica-east1.firebasedatabase.app",
-    storageBucket: "anwar-e5aca.firebasestorage.app",
-    messagingSenderId: "867794060996",
-    appId: "1:867794060996:web:6ce6feeb35684972856b91",
-    measurementId: "G-W124E3585D"
-  };
+  apiKey: "AIzaSyABeNXngGQW6Vd8tH5O1KP_dG_xYsLUjm0",
+  authDomain: "anwar-e5aca.firebaseapp.com",
+  projectId: "anwar-e5aca",
+  databaseURL: "https://anwar-e5aca-default-rtdb.southamerica-east1.firebasedatabase.app",
+  storageBucket: "anwar-e5aca.firebasestorage.app",
+  messagingSenderId: "867794060996",
+  appId: "1:867794060996:web:6ce6feeb35684972856b91",
+  measurementId: "G-W124E3585D"
+};
   const APP_INSTANCE_ID = 'oscar-pos';
   const session = JSON.parse(localStorage.getItem('oscarSession')||'null');
   const companyKey = new URLSearchParams(location.search).get('company') || session?.companyKey || 'COMPANY001';
@@ -940,7 +986,7 @@ const App = (() => {
     return true;
   }
   function guardPage(){ const need=pagePermission[state.page]; if(need && !hasPerm(need)){ toast('ليس لديك صلاحية الوصول لهذا القسم','bad'); setTimeout(()=>location.href='dashboard.html',900); return false; } return true; }
-  function canDoAction(act){ const m={addProduct:'addProducts',editProduct:'editProducts',deleteProduct:'deleteProducts',saveInvoice:'addSales',deleteInvoice:'deleteSales',addExpense:'manageExpenses',editExpense:'manageExpenses',deleteExpense:'manageExpenses',addAccount:'manageAccounts',editAccount:'manageAccounts',deleteAccount:'manageAccounts',accountMove:'manageAccounts',transfer:'manageAccounts',addSupplier:'manageSuppliers',editSupplier:'manageSuppliers',deleteSupplier:'manageSuppliers',supplierPay:'manageSuppliers',addEmployee:'manageEmployees',editEmployee:'manageEmployees',deleteEmployee:'manageEmployees',saveSettings:'manageSettings',exportBackup:'export',clearNotifications:'viewReports'}; return hasPerm(m[act]); }
+  function canDoAction(act){ const m={addProduct:'addProducts',editProduct:'editProducts',deleteProduct:'deleteProducts',saveInvoice:'addSales',deleteInvoice:'deleteSales',addExpense:'manageExpenses',editExpense:'manageExpenses',deleteExpense:'manageExpenses',addAccount:'manageAccounts',editAccount:'manageAccounts',deleteAccount:'manageAccounts',accountMove:'manageAccounts',transfer:'manageAccounts',addSupplier:'manageSuppliers',editSupplier:'manageSuppliers',deleteSupplier:'manageSuppliers',supplierPay:'manageSuppliers',supplierDebt:'manageSuppliers',viewSupplier:'manageSuppliers',addEmployee:'manageEmployees',editEmployee:'manageEmployees',deleteEmployee:'manageEmployees',saveSettings:'manageSettings',exportBackup:'export',clearNotifications:'viewReports'}; return hasPerm(m[act]); }
   function hideByPermissions(){ $$('.nav-link[data-permission]').forEach(a=>{ if(!hasPerm(a.dataset.permission)) a.remove(); }); const info=$('#sessionInfo'); if(info) info.textContent=`${session?.name||session?.userId||''} — ${session?.role==='admin'?'مدير':'موظف'} — ${companyKey}`; }
   function logout(){ localStorage.removeItem('oscarSession'); location.href='index.html'; }
   async function sha256(message){
@@ -1813,7 +1859,7 @@ const App = (() => {
       logout:()=>logout(), addEmployee:()=>openEmployee(), editEmployee:()=>openEmployee(id), deleteEmployee:()=>deleteEmployee(id), saveSettings:()=>saveSettings(), changePassword:()=>openChangePasswordModal(),
       selectCashierCustomer:()=>fillCashierCustomer(id), addCustomer:()=>openCustomer(), editCustomer:()=>openCustomer(id), deleteCustomer:()=>confirmDelete('customers',id,'تم حذف العميل'), viewCustomer:()=>viewCustomer(id), editCustomerMovement:()=>openCustomerMovementEdit(id,el.dataset.mid), deleteCustomerMovement:()=>openCustomerMovementDelete(id,el.dataset.mid), addCustomerDebt:()=>openDebtPayment('customers',id,'debt'), addCustomerPayment:()=>openDebtPayment('customers',id,'payment'), printCustomer:()=>downloadEntityPdf('customers',id), csvCustomer:()=>downloadEntityCSV('customers',id), imageCustomer:()=>downloadEntityImage('customers',id),
       addAccount:()=>openAccount(), editAccount:()=>openAccount(id), deleteAccount:()=>confirmDelete('accounts',id,'تم حذف الحساب'), accountMove:()=>openAccountMove(id), viewAccount:()=>viewAccount(id), accountStatementPdf:()=>downloadAccountPdf(id), transfer:()=>openTransfer(),
-      addSupplier:()=>openSupplier(), editSupplier:()=>openSupplier(id), deleteSupplier:()=>confirmDelete('suppliers',id,'تم حذف المورد'), supplierPay:()=>openSupplierPay(id), printSupplier:()=>downloadEntityPdf('suppliers',id), csvSupplier:()=>downloadEntityCSV('suppliers',id), imageSupplier:()=>downloadEntityImage('suppliers',id),
+      addSupplier:()=>openSupplier(), editSupplier:()=>openSupplier(id), deleteSupplier:()=>confirmDelete('suppliers',id,'تم حذف المورد'), viewSupplier:()=>viewSupplier(id), supplierPay:()=>openSupplierPay(id), supplierDebt:()=>openSupplierDebt(id), printSupplier:()=>downloadEntityPdf('suppliers',id), csvSupplier:()=>downloadEntityCSV('suppliers',id), imageSupplier:()=>downloadEntityImage('suppliers',id),
       addProduct:()=>openProduct(), editProduct:()=>openProduct(id), deleteProduct:()=>deleteProduct(id), scanProductBarcode:()=>openBarcodeModal(code=>{$('#productBarcode').value=code; toast('تم تسجيل باركود الوحدة')}, false), scanProductPieceBarcode:()=>openBarcodeModal(code=>{$('#productPieceBarcode').value=code; toast('تم تسجيل باركود القطعة')}, false),
       addExpense:()=>openExpense(), editExpense:()=>openExpense(id), deleteExpense:()=>deleteExpense(id),
       addInvoice:()=>location.href='cashier.html', viewSavedInvoice:()=>showSavedInvoice(id), printInvoice:()=>printInvoice(id), invoicePdf:()=>downloadInvoicePdf(id), invoiceImage:()=>downloadInvoiceImage(id), editInvoice:()=>openEditInvoice(id), issueInvoice:()=>issueInvoice(id), deleteInvoice:()=>deleteInvoice(id),
@@ -1871,17 +1917,20 @@ const App = (() => {
   function selectWithSearch(id,label,rows,selected=''){
     if(isAccountSelect(id,label,rows) && !selected) selected=defaultAccountId();
     const selectedLabel=optionLabel(rows,selected);
-    return `<div class="field smart-field"><label>${label}</label><div class="smart-select" data-select-id="${id}"><input class="input smart-input" id="${id}_search" value="" data-selected-label="${esc(selectedLabel)}" data-user-selected="0" placeholder="اضغط لعرض الاقتراحات أو اكتب للبحث" autocomplete="off"><input type="hidden" id="${id}" value="${esc(selected||'')}"><div class="smart-options">${smartOptions(rows,selected)}</div></div></div>`
+    return `<div class="field smart-field"><label>${label}</label><div class="smart-select" data-select-id="${id}"><input class="input smart-input" id="${id}_search" value="${esc(selectedLabel)}" data-selected-label="${esc(selectedLabel)}" data-user-selected="0" placeholder="اضغط لعرض الاقتراحات أو اكتب للبحث" autocomplete="off"><input type="hidden" id="${id}" value="${esc(selected||'')}"><div class="smart-options">${smartOptions(rows,selected)}</div></div></div>`
   }
   function rowsForSmartSelectId(id){ return /account|Account|حساب/i.test(String(id||'')) ? coll('accounts') : []; }
   function initSmartSelects(root=document){
     root.querySelectorAll('.smart-select').forEach(sel=>{
       if(sel.dataset.ready) return; sel.dataset.ready='1';
       const input=sel.querySelector('.smart-input'), hidden=sel.querySelector('input[type="hidden"]'), menu=sel.querySelector('.smart-options');
+      const restoreLabel=()=>{ const label=input.dataset.selectedLabel || optionLabel(rowsForSmartSelectId?.(hidden.id)||[], hidden.value); if(!input.value.trim() && hidden.value) input.value=label; };
       const filter=()=>{const q=(input.value||''); menu.querySelectorAll('.smart-option').forEach(o=>o.style.display=!normSearch(q) || textMatches(o.dataset.label,q)||textMatches(o.dataset.value,q)?'flex':'none')};
       const openEmpty=()=>{ input.value=''; input.dataset.userSelected='0'; sel.classList.add('open'); filter(); };
+      if(hidden.value && input.dataset.selectedLabel && !input.value) input.value=input.dataset.selectedLabel;
       input.addEventListener('focus',openEmpty);
       input.addEventListener('click',openEmpty);
+      input.addEventListener('blur',()=>setTimeout(()=>{ if(!sel.classList.contains('open')) restoreLabel(); },140));
       input.addEventListener('input',()=>{sel.classList.add('open'); filter();});
       menu.addEventListener('click',e=>{const opt=e.target.closest('.smart-option'); if(!opt) return; hidden.value=opt.dataset.value; input.value=opt.dataset.label; input.dataset.selectedLabel=opt.dataset.label; input.dataset.userSelected='1'; menu.querySelectorAll('.smart-option').forEach(o=>o.classList.remove('active')); opt.classList.add('active'); sel.classList.remove('open'); if(isAccountSelect(hidden.id, sel.closest('.field')?.querySelector('label')?.textContent||'', rowsForSmartSelectId?.(hidden.id)||coll('accounts'))) rememberAccountId(hidden.value); hidden.dispatchEvent(new Event('change',{bubbles:true}));});
     });
@@ -1892,10 +1941,10 @@ const App = (() => {
     const value=selected || hidden?.value || (isAccountSelect(id,'حساب',rows)?defaultAccountId():'');
     const label=optionLabel(rows,value);
     if(hidden) hidden.value=value;
-    if(input){ input.dataset.selectedLabel=label; if(input.dataset.userSelected==='1' && document.activeElement!==input) input.value=label; else if(document.activeElement!==input) input.value=''; }
+    if(input){ input.dataset.selectedLabel=label; if(document.activeElement!==input) input.value=label; }
     if(menu) menu.innerHTML=smartOptions(rows,value);
   }
-  document.addEventListener('click',e=>{ if(!e.target.closest('.smart-select')) document.querySelectorAll('.smart-select.open').forEach(x=>x.classList.remove('open')); if(!e.target.closest('.suggest-wrap')) document.querySelectorAll('.suggest-panel').forEach(x=>x.classList.remove('show')); });
+  document.addEventListener('click',e=>{ if(!e.target.closest('.smart-select')) document.querySelectorAll('.smart-select.open').forEach(x=>{x.classList.remove('open'); const inp=x.querySelector('.smart-input'), hid=x.querySelector('input[type="hidden"]'); if(inp && hid && !inp.value.trim() && hid.value) inp.value=inp.dataset.selectedLabel||'';}); if(!e.target.closest('.suggest-wrap')) document.querySelectorAll('.suggest-panel').forEach(x=>x.classList.remove('show')); });
   document.addEventListener('focusin',e=>{
     if(e.target && (e.target.id==='customerName' || e.target.id==='customerPhone')) renderCustomerSuggestions(e.target.value, false);
   });
@@ -2062,10 +2111,10 @@ const App = (() => {
   function variantLabel(v){ return String(v?.label || v?.name || v?.title || 'صنف').trim() || 'صنف'; }
   function getProductVariant(p, variantId){ return productVariants(p).find(v=>String(v.id)===String(variantId)); }
   function productSearchText(p){ return [p.name,p.barcode,p.pieceBarcode,p.category,...productVariants(p).flatMap(v=>[variantLabel(v),v.barcode,v.pieceBarcode])].join(' '); }
-  function productBaseWholesale(p){ return n(p.stock)*n(p.purchasePrice); }
-  function productBaseSaleValue(p){ return n(p.stock)*n(p.salePrice); }
-  function productVariantWholesale(v){ return n(v.stock)*n(v.purchasePrice); }
-  function productVariantSaleValue(v){ return n(v.stock)*n(v.salePrice); }
+  function productBaseWholesale(p){ return Math.max(0,n(p.stock))*n(p.purchasePrice); }
+  function productBaseSaleValue(p){ return Math.max(0,n(p.stock))*n(p.salePrice); }
+  function productVariantWholesale(v){ return Math.max(0,n(v.stock))*n(v.purchasePrice); }
+  function productVariantSaleValue(v){ return Math.max(0,n(v.stock))*n(v.salePrice); }
   function productTotalStock(p){ return n(p.stock)+productVariants(p).reduce((a,v)=>a+n(v.stock),0); }
   function productTotalWholesale(p){ return productBaseWholesale(p)+productVariants(p).reduce((a,v)=>a+productVariantWholesale(v),0); }
   function productTotalSaleValue(p){ return productBaseSaleValue(p)+productVariants(p).reduce((a,v)=>a+productVariantSaleValue(v),0); }
@@ -2119,8 +2168,6 @@ const App = (() => {
     return `<div class="variant-row variant-mode-${mode}" data-variant-id="${id}">
       <div class="field"><label>${productSvg} وصف / طعم / حجم</label><input class="input vLabel" value="${esc(labelValue)}" placeholder="مثال: فراولة / حجم كبير"></div>
       <div class="field"><label>طريقة الصنف</label><select class="vMode" onchange="App.toggleVariantMode(this)"><option value="piece" ${mode!=='unit'?'selected':''}>قطعة</option><option value="unit" ${mode==='unit'?'selected':''}>وحدة / كرتونة</option></select></div>
-      <div class="field"><label>${barcodeSvg} باركود الصنف ك وحدة</label><div class="inline-icon-input"><input class="input vBarcode" value="${unitBarcode}" placeholder="باركود الوحدة للصنف"><button class="icon-btn" type="button" onclick="App.scanVariantBarcode(this,'unit')" title="مسح باركود وحدة الصنف">${barcodeSvg}</button></div></div>
-      <div class="field"><label>${barcodeSvg} باركود الصنف ك قطعة</label><div class="inline-icon-input"><input class="input vPieceBarcode" value="${pieceBarcode}" placeholder="اتركه فارغاً ليأخذ باركود الوحدة"><button class="icon-btn" type="button" onclick="App.scanVariantBarcode(this,'piece')" title="مسح باركود قطعة الصنف">${barcodeSvg}</button></div></div>
       <div class="field variant-piece-fields"><label>عدد القطع</label><input class="input vStock" type="text" inputmode="decimal" data-number="1" step="0.001" value="${mode==='unit'?0:n(v.stock)}"></div>
       <div class="field variant-piece-fields"><label>سعر الشراء للقطعة</label><input class="input vBuy" type="text" inputmode="decimal" data-number="1" step="0.01" value="${n(v.purchasePrice)}"></div>
       <div class="field variant-piece-fields"><label>سعر البيع للقطعة</label><input class="input vSale" type="text" inputmode="decimal" data-number="1" step="0.01" value="${n(v.salePrice)}"></div>
@@ -2129,7 +2176,9 @@ const App = (() => {
       <div class="field variant-unit-fields"><label>كم قطعة في الوحدة</label><input class="input vPerUnit" type="text" inputmode="decimal" data-number="1" step="0.001" value="${per}"></div>
       <div class="field variant-unit-fields"><label>سعر الوحدة جملة</label><input class="input vUnitBuy" type="text" inputmode="decimal" data-number="1" step="0.01" value="${unitBuy}"></div>
       <div class="field variant-unit-fields"><label>سعر الوحدة بيع</label><input class="input vUnitSale" type="text" inputmode="decimal" data-number="1" step="0.01" value="${unitSale}"></div>
-      <div class="field variant-actions"><button class="danger-btn" type="button" onclick="App.removeProductVariantRow(this)">${trashSvg} حذف الصنف</button><button class="primary-btn" type="button" onclick="App.addProductVariantRow(this)">${plusSvg} إضافة صنف آخر</button></div>
+      <div class="field variant-unit-fields"><label>${barcodeSvg} باركود الصنف ك وحدة</label><div class="inline-icon-input"><input class="input vBarcode" value="${unitBarcode}" placeholder="باركود الوحدة للصنف"><button class="icon-btn" type="button" onclick="App.scanVariantBarcode(this,'unit')" title="مسح باركود وحدة الصنف">${barcodeSvg}</button></div></div>
+      <div class="field"><label>${barcodeSvg} باركود الصنف ك قطعة</label><div class="inline-icon-input"><input class="input vPieceBarcode" value="${pieceBarcode}" placeholder="اتركه فارغاً ليأخذ باركود الوحدة"><button class="icon-btn" type="button" onclick="App.scanVariantBarcode(this,'piece')" title="مسح باركود قطعة الصنف">${barcodeSvg}</button></div></div>
+      <div class="field variant-actions"><button class="danger-btn" type="button" onclick="App.removeProductVariantRow(this)">${trashSvg} حذف الصنف</button><button class="primary-btn product-add-variant-btn" type="button" onclick="App.addProductVariantRow(this)">${plusSvg} إضافة صنف آخر</button></div>
     </div>`;
   }
   function toggleVariantMode(el){ const row=el?.closest?.('.variant-row') || el; if(!row) return; const mode=row.querySelector?.('.vMode')?.value || 'piece'; row.classList.toggle('variant-mode-unit',mode==='unit'); row.classList.toggle('variant-mode-piece',mode!=='unit'); const calc=$('#productCalc'); if(calc) calc.dispatchEvent(new Event('recalc',{bubbles:true})); }
@@ -2614,14 +2663,21 @@ const App = (() => {
   function viewAccount(id){const a=coll('accounts').find(x=>x.id===id); if(!a)return; const rows=(a.movements||[]).map(m=>`<tr><td>${new Date(m.date).toLocaleString('ar')}</td><td>${esc(m.kind)}</td><td>${money(m.amount)}</td><td>${esc(m.note)}</td></tr>`).join(''); openModal('حركات الحساب',`<div class="card"><h2>${esc(a.name)}</h2><p>الرصيد الحالي: <b>${money(a.balance)}</b></p><button class="primary-btn" type="button" data-action="accountStatementPdf" data-id="${a.id}">تنزيل كشف PDF</button></div><div class="table-wrap"><table><thead><tr><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th>ملاحظات</th></tr></thead><tbody>${rows||'<tr><td colspan="4">لا يوجد حركات</td></tr>'}</tbody></table></div>`)}
 
   function openSupplier(id=''){const s=coll('suppliers').find(x=>x.id===id)||{name:'',phone:'',debt:0,credit:0,notes:'',movements:[]}; openModal(id?'تعديل مورد':'إضافة مورد',`<div class="form-grid"><div class="field"><label>اسم المورد</label><input class="input" id="sName" value="${esc(s.name)}"></div><div class="field"><label>رقم الجوال</label><input class="input" id="sPhone" value="${esc(s.phone)}"></div><div class="field full"><label>ملاحظات</label><textarea id="sNotes">${esc(s.notes)}</textarea></div></div>`,'حفظ المورد',()=>{setItem('suppliers',{...s,id:id||uid('sup'),name:$('#sName').value,phone:$('#sPhone').value,notes:$('#sNotes').value,movements:s.movements||[]},id?'تعديل مورد':'إضافة مورد'); toast('تم حفظ المورد')})}
-  function renderSuppliers(){const root=$('#suppliersTable'); if(!root)return; const rows=filtered(coll('suppliers'),['name','phone','notes']); root.innerHTML=rows.length?rows.map(s=>`<tr><td><b>${esc(s.name)}</b></td><td>${esc(s.phone)}</td><td>${money(s.credit)}</td><td><span class="badge ${n(s.debt)>0?'red':'green'}">${money(s.debt)}</span></td><td class="actions"><button class="mini-btn green" data-action="supplierPay" data-id="${s.id}">سداد</button><button class="mini-btn gray" data-action="imageSupplier" data-id="${s.id}">صورة</button><button class="mini-btn gray" data-action="printSupplier" data-id="${s.id}">PDF</button><button class="mini-btn gray" data-action="csvSupplier" data-id="${s.id}">Excel</button><button class="mini-btn" data-action="editSupplier" data-id="${s.id}">تعديل</button><button class="mini-btn red" data-action="deleteSupplier" data-id="${s.id}">حذف</button></td></tr>`).join(''):`<tr><td colspan="5"><div class="empty">لا يوجد موردين</div></td></tr>`}
+  function renderSuppliers(){const root=$('#suppliersTable'); if(!root)return; const rows=filtered(coll('suppliers'),['name','phone','notes']); root.innerHTML=rows.length?rows.map(s=>`<tr><td><b>${esc(s.name)}</b></td><td>${esc(s.phone)}</td><td>${money(s.credit)}</td><td><span class="badge ${n(s.debt)>0?'red':'green'}">${money(s.debt)}</span></td><td class="actions"><button class="mini-btn" data-action="viewSupplier" data-id="${s.id}">السجل</button><button class="mini-btn green" data-action="supplierPay" data-id="${s.id}">سداد</button><button class="mini-btn" data-action="supplierDebt" data-id="${s.id}">إضافة دين عليا</button><button class="mini-btn gray" data-action="imageSupplier" data-id="${s.id}">صورة</button><button class="mini-btn gray" data-action="printSupplier" data-id="${s.id}">PDF</button><button class="mini-btn gray" data-action="csvSupplier" data-id="${s.id}">Excel</button><button class="mini-btn" data-action="editSupplier" data-id="${s.id}">تعديل</button><button class="mini-btn red" data-action="deleteSupplier" data-id="${s.id}">حذف</button></td></tr>`).join(''):`<tr><td colspan="5"><div class="empty">لا يوجد موردين</div></td></tr>`}
+  function supplierMovementTypeLabel(m){ if(m.type==='payment') return 'سداد'; if(m.refType==='product') return 'دين من إضافة منتج'; return 'دين عليا'; }
+  function viewSupplier(id){
+    const s=coll('suppliers').find(x=>String(x.id)===String(id)); if(!s) return;
+    const moves=(s.movements||[]).map(m=>`<tr><td>${new Date(m.date||Date.now()).toLocaleString('ar')}</td><td>${supplierMovementTypeLabel(m)}</td><td>${money(m.amount)}</td><td>${esc(m.note||'')}</td></tr>`).join('');
+    openModal('سجل المورد',`<div class="card"><h2>${esc(s.name)}</h2><p>${esc(s.phone||'')} — دين عليّ: <b>${money(s.debt)}</b></p><p>${esc(s.notes||'')}</p></div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th>ملاحظات</th></tr></thead><tbody>${moves||'<tr><td colspan="4">لا يوجد حركات</td></tr>'}</tbody></table></div>`);
+  }
   function openSupplierPay(id){openDebtPayment('suppliers',id,'payment')}
+  function openSupplierDebt(id){openDebtPayment('suppliers',id,'debt')}
   function toggleProductMode(){ const mode=$('#productAddMode')?.value; $$('.piece-fields').forEach(e=>e.classList.toggle('hidden',mode!=='piece')); $$('.unit-fields').forEach(e=>e.classList.toggle('hidden',mode!=='unit')); }
   function openProduct(id=''){
     const p=coll('products').find(x=>String(x.id)===String(id))||{name:'',image:'',barcode:'',pieceBarcode:'',supplierId:'',accountId:'cash',mode:'piece',stock:0,purchasePrice:0,salePrice:0,category:'',unitName:'',piecesPerUnit:1,unitBuy:0,unitSale:0,purchasePaid:0,purchaseDebt:0,variants:[]};
     const variantsHtml=productVariants(p).map(v=>productFormVariantHtml(v)).join('') || '<div class="empty">لا يوجد أصناف إضافية بعد</div>';
     const barcodeSvg='<span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5v14M8 5v14M11 5v14M15 5v14M20 5v14"/><path d="M3 3h4M17 3h4M3 21h4M17 21h4"/></svg></span>';
-    const html=`<div class="form-grid"><div class="field"><label>اسم المنتج</label><input class="input" id="pName" value="${esc(p.name)}"></div><div class="field"><label>رابط صورة المنتج</label><input class="input" id="pImage" value="${esc(p.image)}"></div><div class="field"><label>${barcodeSvg} باركود الوحدة</label><div style="display:flex;gap:8px"><input class="input" id="productBarcode" value="${esc(p.barcode)}" placeholder="باركود الكرتونة / الوحدة"><button class="icon-btn" data-action="scanProductBarcode" type="button" title="مسح باركود الوحدة">${barcodeSvg}</button></div></div><div class="field"><label>${barcodeSvg} باركود القطعة</label><div style="display:flex;gap:8px"><input class="input" id="productPieceBarcode" value="${esc(p.pieceBarcode||'')}" placeholder="اتركه فارغاً ليأخذ باركود الوحدة"><button class="icon-btn" data-action="scanProductPieceBarcode" type="button" title="مسح باركود القطعة">${barcodeSvg}</button></div></div><div class="field"><label>طريقة الإضافة</label><select id="productAddMode"><option value="piece" ${p.mode!=='unit'?'selected':''}>قطعة</option><option value="unit" ${p.mode==='unit'?'selected':''}>وحدة / كرتونة</option></select></div><div class="field piece-fields"><label>عدد القطع للمخزون الرئيسي</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.001" id="pPieces" value="${n(p.stock)}"></div><div class="field piece-fields"><label>سعر الشراء للقطعة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pBuyPiece" value="${n(p.purchasePrice)}"></div><div class="field piece-fields"><label>سعر البيع للقطعة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pSalePiece" value="${n(p.salePrice)}"></div><div class="field unit-fields hidden"><label>اسم الوحدة</label><input class="input" id="pUnitName" value="${esc(p.unitName||'كرتونة')}"></div><div class="field unit-fields hidden"><label>عدد الوحدات</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.001" id="pUnits" value="${n(p.units||0)}"></div><div class="field unit-fields hidden"><label>كم قطعة في الوحدة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.001" id="pPerUnit" value="${n(p.piecesPerUnit||1)}"></div><div class="field unit-fields hidden"><label>سعر الوحدة جملة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pUnitBuy" value="${n(p.unitBuy)}"></div><div class="field unit-fields hidden"><label>سعر الوحدة بيع</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pUnitSale" value="${n(p.unitSale)}"></div><div class="field"><label>&nbsp;</label><button class="primary-btn product-add-variant-btn" type="button" onclick="App.addProductVariantRow()"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span> إضافة&nbsp;صنف&nbsp;/&nbsp;طعم&nbsp;/&nbsp;حجم</button></div></div><div class="card" style="margin-top:12px"><b>الأصناف الإضافية لنفس الاسم والصورة:</b><div id="productVariantsBox" class="variant-list">${variantsHtml}</div></div><div class="form-grid product-tail-grid">${selectWithSearch('pSupplier','المورد',coll('suppliers'),p.supplierId)}${selectWithSearch('pAccount','الحساب المخصوم منه',coll('accounts'),p.accountId||defaultAccountId())}<div class="field"><label>التصنيف</label><input class="input" id="pCat" value="${esc(p.category)}"></div><div class="field"><label>المدفوع من المبلغ</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pPaid" value="${id?n(p.purchasePaid):''}"></div></div><div class="card" style="margin-top:12px"><b>الحساب التلقائي:</b> <span id="productCalc">—</span></div>`;
+    const html=`<div class="form-grid"><div class="field"><label>اسم المنتج</label><input class="input" id="pName" value="${esc(p.name)}"></div><div class="field"><label>رابط صورة المنتج</label><input class="input" id="pImage" value="${esc(p.image)}"></div><div class="field"><label>طريقة الإضافة</label><select id="productAddMode"><option value="piece" ${p.mode!=='unit'?'selected':''}>قطعة</option><option value="unit" ${p.mode==='unit'?'selected':''}>وحدة / كرتونة</option></select></div><div class="field piece-fields"><label>عدد القطع للمخزون الرئيسي</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.001" id="pPieces" value="${n(p.stock)}"></div><div class="field piece-fields"><label>سعر الشراء للقطعة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pBuyPiece" value="${n(p.purchasePrice)}"></div><div class="field piece-fields"><label>سعر البيع للقطعة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pSalePiece" value="${n(p.salePrice)}"></div><div class="field unit-fields hidden"><label>اسم الوحدة</label><input class="input" id="pUnitName" value="${esc(p.unitName||'كرتونة')}"></div><div class="field unit-fields hidden"><label>عدد الوحدات</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.001" id="pUnits" value="${n(p.units||0)}"></div><div class="field unit-fields hidden"><label>كم قطعة في الوحدة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.001" id="pPerUnit" value="${n(p.piecesPerUnit||1)}"></div><div class="field unit-fields hidden"><label>سعر الوحدة جملة</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pUnitBuy" value="${n(p.unitBuy)}"></div><div class="field unit-fields hidden"><label>سعر الوحدة بيع</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pUnitSale" value="${n(p.unitSale)}"></div><div class="field unit-fields hidden"><label>${barcodeSvg} باركود الوحدة</label><div style="display:flex;gap:8px"><input class="input" id="productBarcode" value="${esc(p.barcode)}" placeholder="باركود الكرتونة / الوحدة"><button class="icon-btn" data-action="scanProductBarcode" type="button" title="مسح باركود الوحدة">${barcodeSvg}</button></div></div><div class="field"><label>${barcodeSvg} باركود القطعة</label><div style="display:flex;gap:8px"><input class="input" id="productPieceBarcode" value="${esc(p.pieceBarcode||'')}" placeholder="اتركه فارغاً ليأخذ باركود الوحدة"><button class="icon-btn" data-action="scanProductPieceBarcode" type="button" title="مسح باركود القطعة">${barcodeSvg}</button></div></div><div class="field"><label>&nbsp;</label><button class="primary-btn product-add-variant-btn" type="button" onclick="App.addProductVariantRow()"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span> إضافة&nbsp;صنف&nbsp;/&nbsp;طعم&nbsp;/&nbsp;حجم</button></div></div><div class="card" style="margin-top:12px"><b>الأصناف الإضافية لنفس الاسم والصورة:</b><div id="productVariantsBox" class="variant-list">${variantsHtml}</div></div><div class="form-grid product-tail-grid">${selectWithSearch('pSupplier','المورد',coll('suppliers'),p.supplierId)}${selectWithSearch('pAccount','الحساب المخصوم منه',coll('accounts'),p.accountId||defaultAccountId())}<div class="field"><label>التصنيف</label><input class="input" id="pCat" value="${esc(p.category)}"></div><div class="field"><label>المدفوع من المبلغ</label><input class="input" type="text" inputmode="decimal" data-number="1" step="0.01" id="pPaid" value="${id?n(p.purchasePaid):''}"></div></div><div class="card" style="margin-top:12px"><b>الحساب التلقائي:</b> <span id="productCalc">—</span></div>`;
     const box=openModal(id?'تعديل منتج':'إضافة منتج',html,'حفظ المنتج',()=>{
       const mode=$('#productAddMode').value; let stock=n($('#pPieces')?.value), buy=n($('#pBuyPiece')?.value), sale=n($('#pSalePiece')?.value), units=0, per=1, unitBuy=0, unitSale=0;
       if(mode==='unit'){units=n($('#pUnits').value); per=n($('#pPerUnit').value)||1; unitBuy=n($('#pUnitBuy').value); unitSale=n($('#pUnitSale').value); stock=units*per; buy=per?unitBuy/per:0; sale=per?unitSale/per:0;}
@@ -2640,7 +2696,7 @@ const App = (() => {
     const calc=()=>{const mode=$('#productAddMode').value; let stock=n($('#pPieces')?.value), buy=n($('#pBuyPiece')?.value), sale=n($('#pSalePiece')?.value); if(mode==='unit'){const units=n($('#pUnits').value), per=n($('#pPerUnit').value)||1; stock=units*per; buy=per?n($('#pUnitBuy').value)/per:0; sale=per?n($('#pUnitSale').value)/per:0;} const vars=collectProductVariants(); const baseCost=stock*buy; const varCost=vars.reduce((a,v)=>a+n(v.stock)*n(v.purchasePrice),0); const varSale=vars.reduce((a,v)=>a+n(v.stock)*n(v.salePrice),0); const paid=n($('#pPaid').value); $('#productCalc').textContent=`المخزون الرئيسي: ${stock} قطعة — الأصناف: ${vars.length} — إجمالي الجملة: ${money(baseCost+varCost)} — إجمالي البيع: ${money(stock*sale+varSale)} — المتبقي للمورد: ${money(Math.max(0,baseCost+varCost-paid))}`};
     box.addEventListener('input',calc); box.addEventListener('recalc',calc); toggleProductMode(); calc();
   }
-  function renderProducts(){const root=$('#productsTable'); if(!root)return; const totals=productInventoryTotals(); setText('productsCount',String(totals.count)); setText('productsWholesaleValue',money(totals.wholesale)); setText('productsSaleValue',money(totals.sale)); setText('productsExpectedProfit',money(totals.profit)); const q=($('#globalSearch')?.value||'').trim(); const rows=coll('products').filter(p=>!normSearch(q) || textMatches(productSearchText(p),q)); root.innerHTML=rows.length?rows.map(p=>`<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="product-img" style="width:44px;height:44px;margin:0">${p.image?`<img src="${esc(p.image)}">`:'<span class="placeholder-icon"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 0v9m8-4.5-8 4.5-8-4.5"/></svg></span>'}</div><b>${esc(p.name)}${productVariants(p).length?`<small style="display:block;color:var(--muted)">${productVariants(p).length} أصناف إضافية</small>`:''}</b></div></td><td>${esc(p.barcode)}${productVariants(p).length?`<small style="display:block;color:var(--muted)">+ ${productVariants(p).length} باركود صنف</small>`:''}</td><td>${n(productTotalStock(p))}</td><td>${money(productTotalWholesale(p))}</td><td>${money(productTotalSaleValue(p))}</td><td>${esc(p.unitName||'قطعة')}</td><td class="actions"><button class="mini-btn" data-action="editProduct" data-id="${p.id}">تعديل</button><button class="mini-btn red" data-action="deleteProduct" data-id="${p.id}">حذف</button></td></tr>`).join(''):`<tr><td colspan="7"><div class="empty">لا يوجد منتجات</div></td></tr>`}
+  function renderProducts(){const root=$('#productsTable'); if(!root)return; const totals=productInventoryTotals(); setText('productsCount',String(totals.count)); setText('productsWholesaleValue',money(totals.wholesale)); setText('productsSaleValue',money(totals.sale)); setText('productsExpectedProfit',money(totals.profit)); const q=($('#globalSearch')?.value||'').trim(); const rows=coll('products').filter(p=>!normSearch(q) || textMatches(productSearchText(p),q)); root.innerHTML=rows.length?rows.map(p=>`<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="product-img" style="width:44px;height:44px;margin:0">${p.image?`<img src="${esc(p.image)}">`:'<span class="placeholder-icon"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 0v9m8-4.5-8 4.5-8-4.5"/></svg></span>'}</div><b>${esc(p.name)}${productVariants(p).length?`<small style="display:block;color:var(--muted)">${productVariants(p).length} أصناف إضافية</small>`:''}</b></div></td><td>${esc(p.barcode)}${productVariants(p).length?`<small style="display:block;color:var(--muted)">+ ${productVariants(p).length} باركود صنف</small>`:''}</td><td>${n(productTotalStock(p))}</td><td>${money(p.purchasePrice)}</td><td>${money(p.salePrice)}</td><td>${esc(p.unitName||'قطعة')}</td><td class="actions"><button class="mini-btn" data-action="editProduct" data-id="${p.id}">تعديل</button><button class="mini-btn red" data-action="deleteProduct" data-id="${p.id}">حذف</button></td></tr>`).join(''):`<tr><td colspan="7"><div class="empty">لا يوجد منتجات</div></td></tr>`}
   function deleteProduct(id){ const p=coll('products').find(x=>String(x.id)===String(id)); if(!p) return; if(confirm('حذف المنتج؟ سيتم عكس مبلغ الشراء/دين المورد المرتبط به وتحديث الحسابات.')){ reverseProductPurchase(p); deleteItem('products',id,'حذف منتج'); toast('تم حذف المنتج وإعادة الحسابات'); render(); } }
   function openExpense(id=''){
     const ex=coll('expenses').find(x=>x.id===id)||{name:'',amount:0,accountId:'cash',note:'',date:nowIso()};
@@ -2702,8 +2758,8 @@ const App = (() => {
   function exportProductsExcel(){
     if(!hasPerm('export')){toast('ليس لديك صلاحية التصدير','bad'); return;}
     const rows=coll('products');
-    const head=['اسم المنتج','الباركود','المخزون الكلي','رصيد الجملة','رصيد البيع','عدد الأصناف','الوحدة','المورد','التصنيف'];
-    const body=rows.map(p=>[p.name,p.barcode,n(productTotalStock(p)),money(productTotalWholesale(p)),money(productTotalSaleValue(p)),productVariants(p).length,p.unitName||'قطعة',coll('suppliers').find(s=>s.id===p.supplierId)?.name||'',p.category||'']);
+    const head=['اسم المنتج','الباركود','المخزون الكلي','سعر الجملة','سعر البيع','عدد الأصناف','الوحدة','المورد','التصنيف'];
+    const body=rows.map(p=>[p.name,p.barcode,n(productTotalStock(p)),money(p.purchasePrice),money(p.salePrice),productVariants(p).length,p.unitName||'قطعة',coll('suppliers').find(s=>s.id===p.supplierId)?.name||'',p.category||'']);
     const table='<table dir="rtl"><thead><tr>'+head.map(h=>`<th>${esc(h)}</th>`).join('')+'</tr></thead><tbody>'+body.map(r=>'<tr>'+r.map(v=>`<td>${esc(v)}</td>`).join('')+'</tr>').join('')+'</tbody></table>';
     const html='\ufeff<html><head><meta charset="utf-8"></head><body>'+table+'</body></html>';
     downloadBlob(html,'products.xls','application/vnd.ms-excel;charset=utf-8'); toast('تم تصدير المنتجات Excel');
