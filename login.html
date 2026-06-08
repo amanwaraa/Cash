@@ -779,20 +779,65 @@ async function upgradePlainSecretIfNeeded(companyKey, admin, pass){
 async function rtdbPatch(path,data,ms=9000){const r=await fetchTimeout(rtdbUrl(path),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)},ms); if(!r.ok) throw new Error('PATCH '+r.status); return await r.json()}
 async function fetchCloudCompany(companyKey){
   if(!navigator.onLine) return {status:'offline',company:null};
+  const readErr=Symbol('readErr');
+  const safeRead=async(path,timeout=4500)=>{
+    try{return {ok:true,value:await rtdbGet(path,timeout)}}
+    catch(e){return {ok:false,value:readErr,error:e}}
+  };
   try{
     const ok=await pickDatabaseURL(companyKey);
     if(!ok) return {status:'db-error',company:null};
-    const company=await rtdbGet(`companies/${safePathPart(companyKey)}`,8000);
-    if(!isRealCompanyRecord(company)) return {status:'missing',company:null};
-    const adminVal=normalizeAdmin(company.admin);
-    const employees=rowsFromObject(company.employees || {});
-    return {status:'ok',company:{companyKey,active:company.active!==false,subscriptionEnd:company.subscriptionEnd||'2099-12-31',admin:adminVal,employees,_fromCloud:true,companyName:company.companyName||company.storeName||'',storeName:company.storeName||company.companyName||''}};
-  }catch(e){console.warn('cloud login read failed',e); return {status:'error',company:null};}
+
+    const base=`companies/${safePathPart(companyKey)}`;
+    const [adminRes, employeesRes, activeRes, subscriptionEndRes, expiresAtRes, durationUnitRes, durationCountRes, deletedAtRes, companyNameRes, storeNameRes, updatedAtRes, createdAtRes, keyProbeRes] = await Promise.all([
+      safeRead(`${base}/admin`,4500),
+      safeRead(`${base}/employees`,4500),
+      safeRead(`${base}/active`,3500),
+      safeRead(`${base}/subscriptionEnd`,3500),
+      safeRead(`${base}/expiresAt`,3500),
+      safeRead(`${base}/durationUnit`,3500),
+      safeRead(`${base}/durationCount`,3500),
+      safeRead(`${base}/deletedAt`,3500),
+      safeRead(`${base}/companyName`,3500),
+      safeRead(`${base}/storeName`,3500),
+      safeRead(`${base}/updatedAt`,3500),
+      safeRead(`${base}/createdAt`,3500),
+      safeRead(`${base}/companyKey`,3500)
+    ]);
+
+    const anyOk=[adminRes,employeesRes,activeRes,subscriptionEndRes,expiresAtRes,durationUnitRes,durationCountRes,deletedAtRes,companyNameRes,storeNameRes,updatedAtRes,createdAtRes,keyProbeRes].some(x=>x.ok);
+    if(!anyOk) return {status:'error',company:null};
+
+    const adminRaw=adminRes.ok?adminRes.value:null;
+    const employeesRaw=employeesRes.ok?employeesRes.value:null;
+    const active=activeRes.ok?activeRes.value:undefined;
+    const subscriptionEnd=subscriptionEndRes.ok?subscriptionEndRes.value:undefined;
+    const expiresAt=expiresAtRes.ok?expiresAtRes.value:0;
+    const durationUnit=durationUnitRes.ok?durationUnitRes.value:'';
+    const durationCount=durationCountRes.ok?durationCountRes.value:0;
+    const deletedAt=deletedAtRes.ok?deletedAtRes.value:0;
+    const companyName=companyNameRes.ok?(companyNameRes.value||''):'';
+    const storeName=storeNameRes.ok?(storeNameRes.value||''):'';
+    const updatedAt=updatedAtRes.ok?(updatedAtRes.value||0):0;
+    const createdAt=createdAtRes.ok?(createdAtRes.value||0):0;
+    const keyProbe=keyProbeRes.ok?keyProbeRes.value:undefined;
+
+    const remoteMissing=keyProbeRes.ok && keyProbe===null && adminRes.ok && adminRaw===null && employeesRes.ok && employeesRaw===null && activeRes.ok && (active===null || active===undefined) && subscriptionEndRes.ok && (subscriptionEnd===null || subscriptionEnd===undefined) && !companyName && !storeName;
+    if(remoteMissing) return {status:'missing',company:null};
+
+    const adminVal=normalizeAdmin(adminRaw);
+    const employees=rowsFromObject(employeesRaw || {});
+    const hasLoginData=!!(adminVal || employees.length);
+    const hasIdentity=!!(companyName || storeName || updatedAt || createdAt || hasLoginData || active!==undefined || subscriptionEnd || Number(expiresAt||0)>0);
+    if(!hasIdentity || !hasLoginData) return {status:'error',company:null};
+
+    return {status:'ok',company:{companyKey,active:active!==false,subscriptionEnd:subscriptionEnd||'2099-12-31',expiresAt:Number(expiresAt||0),durationUnit:durationUnit||'',durationCount:Number(durationCount||0),deletedAt:Number(deletedAt||0),admin:adminVal,employees,_fromCloud:true,companyName:companyName||storeName||'',storeName:storeName||companyName||'',updatedAt,createdAt}};
+  }catch(e){console.warn('cloud login lightweight read failed',e); return {status:'error',company:null};}
 }
 async function cacheCloudCompany(company){
   if(!company) return;
   if(company.employees?.length) localStorage.setItem('oscarEmployees_'+company.companyKey,JSON.stringify(company.employees));
-  localStorage.setItem('oscarCompany_'+company.companyKey,JSON.stringify({companyKey:company.companyKey,companyName:company.companyName||company.storeName||'',storeName:company.storeName||company.companyName||'',active:company.active,subscriptionEnd:company.subscriptionEnd,admin:company.admin,_fromCloud:true,updatedAt:Date.now()}));
+  localStorage.setItem('oscarCompany_'+company.companyKey,JSON.stringify({companyKey:company.companyKey,companyName:company.companyName||company.storeName||'',storeName:company.storeName||company.companyName||'',active:company.active,subscriptionEnd:company.subscriptionEnd,expiresAt:Number(company.expiresAt||0),durationUnit:company.durationUnit||'',durationCount:Number(company.durationCount||0),deletedAt:Number(company.deletedAt||0),admin:company.admin,_fromCloud:true,updatedAt:Date.now()}));
 }
 async function login(e){
   e.preventDefault();
@@ -809,8 +854,9 @@ async function login(e){
       company=cloudResult.company;
       await cacheCloudCompany(company);
     }else if(navigator.onLine && cloudResult.status==='missing'){
-      company=await getLocalCompany(companyKey);
-      if(!company){ toast('مفتاح الشركة غير موجود','bad'); return reset(); }
+      toast('مفتاح الشركة غير موجود أو تم حذفه','bad');
+      try{localStorage.removeItem('oscarCompany_'+companyKey); localStorage.removeItem('oscarEmployees_'+companyKey);}catch(e){}
+      return reset();
     }else{
       company=await getLocalCompany(companyKey);
       if(!company){
@@ -818,7 +864,8 @@ async function login(e){
         return reset();
       }
     }
-    // لا يتم منع الدخول بسبب حالة/مدة المفتاح؛ التحقق هنا يقتصر على المفتاح واسم المستخدم وكلمة المرور.
+    const stopReason=expiredAccessReason(company);
+    if(stopReason){ toast(stopReason,'bad'); return reset(); }
     let session=null;
     const admin=normalizeAdmin(company.admin);
     if(admin && username===String(admin.username||'').trim()){
@@ -826,7 +873,7 @@ async function login(e){
       if(!(await verifySecret(admin,pass))){toast('اسم المستخدم أو كلمة المرور غير صحيحة لهذا المفتاح','bad'); return reset();}
       const cleanAdmin=await upgradePlainSecretIfNeeded(companyKey, admin, pass);
       session={companyKey,userId:'admin',name:'المدير',role:'admin',permissions:fullPermissions,loginAt:Date.now()};
-      const lc=(await getLocalCompany(companyKey))||{companyKey}; lc.admin={...cleanAdmin,lastLogin:Date.now()}; lc.companyName=company.companyName||lc.companyName; lc.storeName=company.storeName||lc.storeName; lc.active=company.active; lc.subscriptionEnd=company.subscriptionEnd; lc._fromCloud=lc._fromCloud||company._fromCloud; localStorage.setItem('oscarCompany_'+companyKey,JSON.stringify(lc));
+      const lc=(await getLocalCompany(companyKey))||{companyKey}; lc.admin={...cleanAdmin,lastLogin:Date.now()}; lc.companyName=company.companyName||lc.companyName; lc.storeName=company.storeName||lc.storeName; lc.active=company.active; lc.subscriptionEnd=company.subscriptionEnd; lc.expiresAt=Number(company.expiresAt||0); lc.durationUnit=company.durationUnit||''; lc.durationCount=Number(company.durationCount||0); lc.deletedAt=Number(company.deletedAt||0); lc._fromCloud=lc._fromCloud||company._fromCloud; localStorage.setItem('oscarCompany_'+companyKey,JSON.stringify(lc));
     }else{
       let emps=company.employees||[];
       if(!emps.length){try{emps=JSON.parse(localStorage.getItem('oscarEmployees_'+companyKey)) || readLocalCompanyStore(companyKey)?.employees || []}catch(e){emps=[]}}
@@ -847,14 +894,33 @@ function reset(){const btn=$('#loginBtn'); btn.disabled=false; btn.textContent='
 function cachedCompanyAccess(companyKey){
   try{return JSON.parse(localStorage.getItem('oscarCompany_'+companyKey)||'null')}catch(e){return null}
 }
+function accessExpiryMs(c){
+  const ts=Number(c?.expiresAt||0);
+  if(ts>0) return ts;
+  const end=String(c?.subscriptionEnd||'').trim();
+  if(end && end!=='2099-12-31') return new Date(end+'T23:59:59').getTime();
+  return 0;
+}
 function isExpiredAccess(c){
   if(!c) return false;
   if(c.active===false) return true;
-  const end=String(c.subscriptionEnd||'').trim();
-  if(end && end!=='2099-12-31' && new Date(end+'T23:59:59') < new Date()) return true;
-  return false;
+  const ts=accessExpiryMs(c);
+  return !!(ts && ts<Date.now());
+}
+function expiredAccessReason(c){
+  if(c?.deletedAt) return 'تم حذف مفتاح الشركة';
+  if(c?.active===false) return 'تم إيقاف مفتاح الشركة';
+  const ts=accessExpiryMs(c);
+  if(ts && ts<Date.now()) return 'انتهى اشتراكك';
+  return '';
 }
 function savedSessionCanAutoEnter(s){
+  const c=s?.companyKey?cachedCompanyAccess(s.companyKey):null;
+  if(isExpiredAccess(c)){
+    try{localStorage.setItem('oscarLoginNotice', expiredAccessReason(c)||'انتهى اشتراكك')}catch(e){}
+    localStorage.removeItem('oscarSession');
+    return false;
+  }
   return !!(s && s.companyKey);
 }
 document.addEventListener('DOMContentLoaded',()=>{
