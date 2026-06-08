@@ -370,7 +370,7 @@ body{margin:0;background:linear-gradient(160deg,#eaf4ff,#f8fafc);font-family:'Ca
   overscroll-behavior:auto;
   padding-left:4px;
   scrollbar-width:thin;
-  scroll-behavior:smooth;
+  scroll-behavior:auto;
 }
 #cartLines::-webkit-scrollbar{width:7px}
 #cartLines::-webkit-scrollbar-thumb{background:rgba(148,163,184,.55);border-radius:999px}
@@ -729,7 +729,7 @@ body{margin:0;background:linear-gradient(160deg,#eaf4ff,#f8fafc);font-family:'Ca
 }
 #cartLines{
   overflow-y:auto!important;
-  overscroll-behavior:contain!important;
+  overscroll-behavior:auto!important;
   padding-inline-end:2px!important;
 }
 #cartLines:focus{
@@ -747,7 +747,7 @@ body{margin:0;background:linear-gradient(160deg,#eaf4ff,#f8fafc);font-family:'Ca
     border-radius:14px!important;
     max-height:168px!important;
     overflow-y:auto!important;
-    overscroll-behavior:contain!important;
+    overscroll-behavior:auto!important;
   }
   #cashierSummaryDock .summary-box:focus{
     outline:2px solid rgba(37,99,235,.35)!important;
@@ -780,6 +780,53 @@ body{margin:0;background:linear-gradient(160deg,#eaf4ff,#f8fafc);font-family:'Ca
   .cashier-clear-btn{
     min-height:32px!important;
     padding:0 8px!important;
+  }
+}
+
+
+/* تمرير طبيعي وسلس: عند نهاية السلة يكمل الموقع بالتمرير بدون كود يدوي */
+#cartLines,
+#cashierSummaryDock .summary-box{
+  overscroll-behavior:auto!important;
+}
+
+
+
+
+/* v49: رجوع حدود السلة مع انتقال تمرير طبيعي للصفحة عند الحافة */
+#cartLines{
+  max-height:min(52vh,540px)!important;
+  height:auto!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior-y:auto!important;
+  scroll-behavior:auto!important;
+  -webkit-overflow-scrolling:touch!important;
+  padding-left:4px!important;
+  scrollbar-width:thin!important;
+}
+#cartLines::-webkit-scrollbar{width:7px}
+#cartLines::-webkit-scrollbar-thumb{background:rgba(148,163,184,.55);border-radius:999px}
+#cartLines::-webkit-scrollbar-track{background:rgba(148,163,184,.10);border-radius:999px}
+@media(max-width:560px){
+  #cartLines{
+    max-height:44vh!important;
+  }
+}
+
+
+/* v52: تعديل ارتفاع السلة فقط بدون لمس باقي مميزات نسخة 50 */
+#cartLines{
+  max-height:clamp(220px, 30vh, 285px)!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior-y:auto!important;
+  -webkit-overflow-scrolling:touch!important;
+  scroll-behavior:auto!important;
+}
+@media(max-width:560px){
+  #cartLines{
+    max-height:230px!important;
   }
 }
 

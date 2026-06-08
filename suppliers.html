@@ -410,7 +410,7 @@
   overscroll-behavior:auto;
   padding-left:4px;
   scrollbar-width:thin;
-  scroll-behavior:smooth;
+  scroll-behavior:auto;
 }
 #cartLines::-webkit-scrollbar{width:7px}
 #cartLines::-webkit-scrollbar-thumb{background:rgba(148,163,184,.55);border-radius:999px}
@@ -783,7 +783,7 @@
 }
 #cartLines{
   overflow-y:auto!important;
-  overscroll-behavior:contain!important;
+  overscroll-behavior:auto!important;
   padding-inline-end:2px!important;
 }
 #cartLines:focus{
@@ -801,7 +801,7 @@
     border-radius:14px!important;
     max-height:168px!important;
     overflow-y:auto!important;
-    overscroll-behavior:contain!important;
+    overscroll-behavior:auto!important;
   }
   #cashierSummaryDock .summary-box:focus{
     outline:2px solid rgba(37,99,235,.35)!important;
@@ -834,6 +834,53 @@
   .cashier-clear-btn{
     min-height:32px!important;
     padding:0 8px!important;
+  }
+}
+
+
+/* تمرير طبيعي وسلس: عند نهاية السلة يكمل الموقع بالتمرير بدون كود يدوي */
+#cartLines,
+#cashierSummaryDock .summary-box{
+  overscroll-behavior:auto!important;
+}
+
+
+
+
+/* v49: رجوع حدود السلة مع انتقال تمرير طبيعي للصفحة عند الحافة */
+#cartLines{
+  max-height:min(52vh,540px)!important;
+  height:auto!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior-y:auto!important;
+  scroll-behavior:auto!important;
+  -webkit-overflow-scrolling:touch!important;
+  padding-left:4px!important;
+  scrollbar-width:thin!important;
+}
+#cartLines::-webkit-scrollbar{width:7px}
+#cartLines::-webkit-scrollbar-thumb{background:rgba(148,163,184,.55);border-radius:999px}
+#cartLines::-webkit-scrollbar-track{background:rgba(148,163,184,.10);border-radius:999px}
+@media(max-width:560px){
+  #cartLines{
+    max-height:44vh!important;
+  }
+}
+
+
+/* v52: تعديل ارتفاع السلة فقط بدون لمس باقي مميزات نسخة 50 */
+#cartLines{
+  max-height:clamp(220px, 30vh, 285px)!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior-y:auto!important;
+  -webkit-overflow-scrolling:touch!important;
+  scroll-behavior:auto!important;
+}
+@media(max-width:560px){
+  #cartLines{
+    max-height:230px!important;
   }
 }
 
@@ -1878,6 +1925,9 @@ const App = (() => {
     document.addEventListener('keydown', handleBarcodeScannerInput, true);
     document.addEventListener('keydown', handleKeyboardShortcuts);
     document.addEventListener('keydown', handleCartScrollKeys);
+    document.addEventListener('wheel', handleCartEdgeWheel, {passive:true});
+    document.addEventListener('touchstart', handleCartEdgeTouchStart, {passive:true});
+    document.addEventListener('touchmove', handleCartEdgeTouchMove, {passive:true});
     document.addEventListener('input', handleGlobalInput);
     document.addEventListener('change', handleGlobalInput);
     window.addEventListener('resize', function resizeCashierSummary(){ if(state.page==='cashier') arrangeCashierSummary(); });
@@ -2048,6 +2098,45 @@ const App = (() => {
       if(code.length>=5) commitBarcodeScan(code,scanTarget);
     },90);
   }
+
+  const cartEdgePass={timer:null};
+  function cartAtEdge(box, delta){
+    const max=Math.max(0, box.scrollHeight-box.clientHeight);
+    if(max<=0) return true;
+    return (delta<0 && box.scrollTop<=1) || (delta>0 && box.scrollTop>=max-1);
+  }
+  function releaseCartScrollToPage(box){
+    if(!box || box.dataset.edgePass==='1') return;
+    box.dataset.edgePass='1';
+    box.style.overflowY='hidden';
+    clearTimeout(cartEdgePass.timer);
+    cartEdgePass.timer=setTimeout(()=>{
+      if(!box.isConnected) return;
+      box.style.overflowY='';
+      delete box.dataset.edgePass;
+    },180);
+  }
+  function handleCartEdgeWheel(e){
+    const box=e.target?.closest?.('#cartLines');
+    if(!box || !e.deltaY) return;
+    if(cartAtEdge(box,e.deltaY)) releaseCartScrollToPage(box);
+  }
+  function handleCartEdgeTouchStart(e){
+    const box=e.target?.closest?.('#cartLines');
+    if(!box) return;
+    box.dataset.touchY=String(e.touches?.[0]?.clientY||0);
+  }
+  function handleCartEdgeTouchMove(e){
+    const box=e.target?.closest?.('#cartLines');
+    if(!box) return;
+    const y=e.touches?.[0]?.clientY||0;
+    const old=n(box.dataset.touchY||y);
+    box.dataset.touchY=String(y);
+    const delta=old-y;
+    if(Math.abs(delta)<1) return;
+    if(cartAtEdge(box,delta)) releaseCartScrollToPage(box);
+  }
+
   function handleCartScrollKeys(e){
     if(state.page!=='cashier') return;
     const tag=(e.target?.tagName||'').toLowerCase();
@@ -2058,31 +2147,35 @@ const App = (() => {
     const atTop=box.scrollTop<=1;
     const atBottom=box.scrollTop>=max-1;
     const step=90;
-    const pageStep=box.clientHeight*.85;
-
-    // إذا وصلت السلة للأعلى أو الأسفل، لا نمنع الحدث حتى تكمل الصفحة نفسها بالتمرير.
+    const pageStep=box.clientHeight*.85 || window.innerHeight*.75;
     if(e.key==='ArrowDown'){
-      if(!atBottom){ e.preventDefault(); box.scrollBy({top:step,behavior:'smooth'}); }
+      e.preventDefault();
+      if(!atBottom) box.scrollBy({top:step,behavior:'auto'}); else window.scrollBy(0,step);
       return;
     }
     if(e.key==='ArrowUp'){
-      if(!atTop){ e.preventDefault(); box.scrollBy({top:-step,behavior:'smooth'}); }
+      e.preventDefault();
+      if(!atTop) box.scrollBy({top:-step,behavior:'auto'}); else window.scrollBy(0,-step);
       return;
     }
     if(e.key==='PageDown'){
-      if(!atBottom){ e.preventDefault(); box.scrollBy({top:pageStep,behavior:'smooth'}); }
+      e.preventDefault();
+      if(!atBottom) box.scrollBy({top:pageStep,behavior:'auto'}); else window.scrollBy(0,pageStep);
       return;
     }
     if(e.key==='PageUp'){
-      if(!atTop){ e.preventDefault(); box.scrollBy({top:-pageStep,behavior:'smooth'}); }
+      e.preventDefault();
+      if(!atTop) box.scrollBy({top:-pageStep,behavior:'auto'}); else window.scrollBy(0,-pageStep);
       return;
     }
     if(e.key==='Home'){
-      if(!atTop){ e.preventDefault(); box.scrollTo({top:0,behavior:'smooth'}); }
+      e.preventDefault();
+      if(!atTop) box.scrollTo({top:0,behavior:'auto'}); else window.scrollTo(0,0);
       return;
     }
     if(e.key==='End'){
-      if(!atBottom){ e.preventDefault(); box.scrollTo({top:box.scrollHeight,behavior:'smooth'}); }
+      e.preventDefault();
+      if(!atBottom) box.scrollTo({top:box.scrollHeight,behavior:'auto'}); else window.scrollTo(0,document.documentElement.scrollHeight);
       return;
     }
   }
