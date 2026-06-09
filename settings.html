@@ -884,6 +884,31 @@
   }
 }
 
+
+/* v59: إجراءات الفواتير في سطر واحد */
+.invoice-actions{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:6px!important;
+  flex-wrap:nowrap!important;
+  white-space:nowrap!important;
+  min-width:max-content!important;
+}
+.invoice-actions .mini-btn{
+  white-space:nowrap!important;
+  flex:0 0 auto!important;
+}
+@media(max-width:560px){
+  .invoice-actions{
+    gap:5px!important;
+  }
+  .invoice-actions .mini-btn{
+    padding:7px 9px!important;
+    font-size:12px!important;
+  }
+}
+
 </style>
 <link rel="icon" type="image/png" sizes="64x64" href="icon-64.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -3136,7 +3161,7 @@ const App = (() => {
   }
 
   function invoiceSourceName(inv){ return inv?.sourceName || inv?.createdByName || inv?.source || (inv?.createdBy==='admin'?'المدير':'—'); }
-  function renderInvoices(){const root=$('#invoicesTable'); if(!root)return; const rows=filtered(coll('invoices'),['number','customerName','phone']); root.innerHTML=rows.length?rows.map(inv=>{ const isDraft=String(inv.status||'issued')==='draft'; const statusBadge=isDraft?'<span class="draft-status-badge">معلق</span>':'<span class="issued-status-badge">صادرة</span>'; return `<tr><td><b>${esc(inv.number)}</b></td><td>${esc(inv.customerName||'نقدي')}</td><td>${statusBadge}</td><td>${esc(invoiceSourceName(inv))}</td><td>${money(inv.total)}</td><td>${money(inv.paid)}</td><td>${money(inv.debt)}</td><td>${new Date(inv.date).toLocaleString('ar')}</td><td class="actions"><button class="mini-btn gray" data-action="viewSavedInvoice" data-id="${inv.id}">عرض</button><button class="mini-btn" data-action="editInvoice" data-id="${inv.id}">تعديل</button>${isDraft?`<button class="mini-btn green" data-action="issueInvoice" data-id="${inv.id}">إصدار</button>`:`<button class="mini-btn" data-action="printInvoice" data-id="${inv.id}">طباعة حرارية</button>`}<button class="mini-btn gray" data-action="invoicePdf" data-id="${inv.id}">PDF</button><button class="mini-btn gray" data-action="invoiceImage" data-id="${inv.id}">صورة</button><button class="mini-btn red" data-action="deleteInvoice" data-id="${inv.id}">حذف</button></td></tr>`}).join(''):`<tr><td colspan="9"><div class="empty">لا توجد فواتير</div></td></tr>`}
+  function renderInvoices(){const root=$('#invoicesTable'); if(!root)return; const rows=filtered(coll('invoices'),['number','customerName','phone']); root.innerHTML=rows.length?rows.map(inv=>{ const isDraft=String(inv.status||'issued')==='draft'; const statusBadge=isDraft?'<span class="draft-status-badge">معلق</span>':'<span class="issued-status-badge">صادرة</span>'; return `<tr><td><b>${esc(inv.number)}</b></td><td>${esc(inv.customerName||'نقدي')}</td><td>${statusBadge}</td><td>${esc(invoiceSourceName(inv))}</td><td>${money(inv.total)}</td><td>${money(inv.paid)}</td><td>${money(inv.debt)}</td><td>${new Date(inv.date).toLocaleString('ar')}</td><td class="actions invoice-actions"><button class="mini-btn gray" data-action="viewSavedInvoice" data-id="${inv.id}">عرض</button><button class="mini-btn" data-action="editInvoice" data-id="${inv.id}">تعديل</button>${isDraft?`<button class="mini-btn green" data-action="issueInvoice" data-id="${inv.id}">إصدار</button>`:`<button class="mini-btn" data-action="printInvoice" data-id="${inv.id}">طباعة حرارية</button>`}<button class="mini-btn gray" data-action="invoicePdf" data-id="${inv.id}">PDF</button><button class="mini-btn gray" data-action="invoiceImage" data-id="${inv.id}">صورة</button><button class="mini-btn red" data-action="deleteInvoice" data-id="${inv.id}">حذف</button></td></tr>`}).join(''):`<tr><td colspan="9"><div class="empty">لا توجد فواتير</div></td></tr>`}
   function invoicePrintableHtml(inv, autoPrint=true){
     const width=settings().printWidth||'58mm';
     const st=settings();
@@ -3145,21 +3170,46 @@ const App = (() => {
     const isDraft=String(inv.status||'issued')==='draft';
     const titleText=isDraft?'فاتورة معلقة / مسودة':'فاتورة مبيعات مباشرة';
     const subtitle=(st.receiptSubtitle && !/ضريبية|مبسطة/.test(st.receiptSubtitle)) ? st.receiptSubtitle : titleText;
-    const items=(inv.items||[]).map(l=>`<div class="item-row"><span class="item-name">${esc(lineDisplayName(l))}</span><span class="item-qty">x${esc(l.qty||1)}</span><b>${esc(receiptMoney(lineSaleTotal(l)))}</b></div>`).join('') || '<div class="empty-line">لا توجد أصناف</div>';
-    return `<html dir="rtl"><head><meta charset="utf-8"><title>${esc(inv.number)}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet"><style>
-*{box-sizing:border-box}html,body{margin:0;background:#fff;color:#000}body{font-family:Tahoma,'Arial Narrow',Arial,sans-serif;width:${width};margin:0 auto;padding:6px 7px;font-size:10.5px;line-height:1.45}.receipt{width:100%}.center{text-align:center}.store{font-size:17px;font-weight:900;line-height:1.2;margin-top:1px}.sub{font-size:10px;color:#4b5563;font-weight:700;margin-top:1px}.thin{border-top:1px solid #9ca3af;margin:8px 0}.sep{border-top:2px dashed #000;margin:10px 0}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start;margin:4px 0}.row .label{font-weight:900;text-align:right;white-space:nowrap}.row .val{font-weight:800;text-align:left;word-break:break-word}.ltr{direction:ltr;text-align:left}.items{display:grid;gap:0;margin:2px 0}.item-row{display:grid;grid-template-columns:1fr 34px 70px;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #e5e7eb}.item-name{text-align:right;font-weight:800;overflow-wrap:anywhere}.item-qty{text-align:center;font-weight:900;direction:ltr}.item-row b{text-align:left;direction:ltr;font-size:10.5px;font-weight:900;white-space:nowrap}.empty-line{text-align:center;color:#6b7280;padding:10px 0}.summary .row{font-size:10.5px;margin:3px 0}.summary .row .val{font-size:11px;font-weight:900}.footer{font-size:10px;text-align:center;margin-top:6px;color:#374151;font-weight:700}@media print{@page{size:${width} auto;margin:0}body{width:${width};margin:0;padding:6px 8px}}
-</style></head><body><div class="receipt"><div class="center"><div class="store">${esc(st.storeName||'أوسكار')}</div><div class="sub">${esc(subtitle)}</div></div><div class="thin"></div><div class="sep"></div><div class="row"><span class="label">رقم الفاتورة:</span><span class="val ltr">${esc(inv.number)}</span></div><div class="row"><span class="label">التاريخ والوقت:</span><span class="val">${new Date(inv.date).toLocaleString('ar')}</span></div><div class="row"><span class="label">الكاشير:</span><span class="val">${esc(session?.name||session?.username||'')}</span></div><div class="row"><span class="label">العميل:</span><span class="val">${esc(inv.customerName||'نقدي')}</span></div>${inv.phone?`<div class="row"><span class="label">الهاتف:</span><span class="val ltr">${esc(inv.phone)}</span></div>`:''}<div class="row"><span class="label">الحالة:</span><span class="val">${isDraft?'معلقة':'صادرة'}</span></div><div class="sep"></div><div class="items">${items}</div><div class="sep"></div><div class="summary"><div class="row"><span class="label">الإجمالي قبل الخصم:</span><span class="val ltr">${esc(receiptMoney(inv.subTotal||inv.total))}</span></div><div class="row"><span class="label">الخصم:</span><span class="val ltr">${esc(receiptMoney(inv.discountAmount||0))}</span></div><div class="row"><span class="label">إجمالي المبيعات:</span><span class="val ltr">${esc(receiptMoney(inv.total))}</span></div></div><div class="thin"></div><div class="footer">شكراً لزيارتكم</div></div>${autoPrint?'<script>setTimeout(()=>print(),250)<\/script>':''}</body></html>`;
+    const items=(inv.items||[]).map(l=>`<div class="item-row"><span class="item-name">${esc(lineDisplayName(l))}</span><span class="item-price">${esc(receiptMoney(n(l.price)))}</span><span class="item-qty">x${esc(l.qty||1)}</span><b>${esc(receiptMoney(lineSaleTotal(l)))}</b></div>`).join('') || '<div class="empty-line">لا توجد أصناف</div>';
+    return `<html dir="rtl"><head><meta charset="utf-8"><title>${esc(inv.number)}</title><style>
+*{box-sizing:border-box}html,body{margin:0;background:#fff;color:#000}body{font-family:Tahoma,'Arial Narrow',Arial,sans-serif;width:${width};margin:0 auto;padding:6px 7px;font-size:10px;line-height:1.35}.receipt{width:100%}.center{text-align:center}.store{font-size:17px;font-weight:900;line-height:1.2;margin-top:1px}.sub{font-size:10px;color:#4b5563;font-weight:700;margin-top:1px}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start;margin:4px 0}.row .label{font-weight:900;text-align:right;white-space:nowrap}.row .val{font-weight:800;text-align:left;word-break:break-word}.ltr{direction:ltr;text-align:left}.items{display:grid;gap:0;margin:8px 0}.item-head,.item-row{display:grid;grid-template-columns:minmax(0,1fr) 48px 30px 58px;align-items:center;gap:4px;padding:3px 0}.item-head{font-size:9px;color:#374151;font-weight:900}.receipt-line{border-top:1px solid #111827;margin:7px 0}.item-name{text-align:right;font-weight:800;overflow-wrap:anywhere}.item-price,.item-qty,.item-row b{text-align:center;direction:ltr;font-size:9.5px;font-weight:900;white-space:nowrap}.item-row b{text-align:left}.empty-line{text-align:center;color:#6b7280;padding:10px 0}.summary .row{font-size:10px;margin:3px 0}.summary .row .val{font-size:10.5px;font-weight:900}.total-box{border:1px solid #111827;border-radius:7px;padding:6px 8px;margin-top:6px}.total-box .label,.total-box .val{font-size:12px;font-weight:900}.footer{font-size:10px;text-align:center;margin-top:8px;color:#374151;font-weight:700}@media print{@page{size:${width} auto;margin:0}body{width:${width};margin:0;padding:6px 8px}}
+</style></head><body><div class="receipt"><div class="center"><div class="store">${esc(st.storeName||'أوسكار')}</div><div class="sub">${esc(subtitle)}</div></div><div class="row"><span class="label">رقم الفاتورة:</span><span class="val ltr">${esc(inv.number)}</span></div><div class="row"><span class="label">التاريخ والوقت:</span><span class="val">${new Date(inv.date).toLocaleString('ar')}</span></div><div class="receipt-line"></div><div class="items"><div class="item-head"><span>الاسم</span><span>السعر</span><span>الكمية</span><span>الإجمالي</span></div>${items}</div><div class="receipt-line"></div><div class="summary"><div class="row"><span class="label">قبل الخصم:</span><span class="val ltr">${esc(receiptMoney(inv.subTotal||inv.total))}</span></div><div class="row"><span class="label">الخصم:</span><span class="val ltr">${esc(receiptMoney(inv.discountAmount||0))}</span></div><div class="row total-box"><span class="label">مبلغ إجمالي المبيعات:</span><span class="val ltr">${esc(receiptMoney(inv.total))}</span></div></div><div class="footer">شكراً لزيارتكم</div></div>${autoPrint?'<script>setTimeout(()=>print(),250)<\/script>':''}</body></html>`;
   }
   function printInvoice(id){const inv=coll('invoices').find(x=>x.id===id); if(!inv)return; const html=invoicePrintableHtml(inv,true); const w=window.open('about:blank','_blank'); if(!w){toast('اسمح بالنوافذ المنبثقة حتى تعمل الطباعة','warn'); return;} w.document.open(); w.document.write(html); w.document.close(); setTimeout(()=>{try{w.focus(); w.print();}catch(e){console.warn(e)}},450); }
   function downloadInvoicePdf(id){ const inv=coll('invoices').find(x=>x.id===id); if(!inv)return; downloadCanvasPdf(buildInvoiceCanvas(inv),(inv.number||'invoice')+'.pdf'); toast('تم تنزيل PDF الفاتورة'); }
+  
+  function roundRect(ctx,x,y,w,h,r){
+    if(ctx.roundRect){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); return; }
+    ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+  }
+
   function buildInvoiceCanvas(inv){
-    const rows=inv.items||[]; const h=560+rows.length*58; const canvas=document.createElement('canvas'); canvas.width=1000; canvas.height=h; const ctx=canvas.getContext('2d'); ctx.direction='rtl';
-    ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,1000,h); ctx.fillStyle='#174EA6'; ctx.fillRect(0,0,1000,142);
+    const rows=inv.items||[];
+    const h=500+rows.length*58;
+    const canvas=document.createElement('canvas'); canvas.width=1000; canvas.height=h; const ctx=canvas.getContext('2d'); ctx.direction='rtl';
+    ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,1000,h);
+    ctx.fillStyle='#174EA6'; ctx.fillRect(0,0,1000,142);
     ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.font='bold 46px Arial'; ctx.fillText(settings().storeName||'أوسكار',500,62); ctx.font='26px Arial'; ctx.fillText('فاتورة مبيعات',500,106);
-    const isDraft=String(inv.status||'issued')==='draft'; ctx.fillStyle='#111827'; ctx.textAlign='right'; ctx.font='bold 28px Arial'; ctx.fillText(inv.number||'',940,188); ctx.font='23px Arial'; ctx.fillText(new Date(inv.date).toLocaleString('ar'),940,224); ctx.fillText('العميل: '+(inv.customerName||'نقدي')+' '+(inv.phone||''),940,260); ctx.fillText('الحالة: '+(isDraft?'معلقة':'صادرة'),940,296);
-    let y=352; ctx.font='bold 23px Arial'; ctx.fillStyle='#e5e7eb'; ctx.fillRect(55,y-36,890,46); ctx.fillStyle='#111827'; ctx.fillText('الصنف',930,y); ctx.fillText('كمية',515,y); ctx.fillText('سعر',360,y); ctx.fillText('المجموع',190,y); y+=46;
-    ctx.font='21px Arial'; rows.forEach(r=>{ctx.fillStyle='#f8fafc'; ctx.fillRect(55,y-30,890,46); ctx.fillStyle='#111827'; ctx.fillText(String(lineDisplayName(r)||''),930,y); ctx.fillText(String(r.qty||''),515,y); ctx.fillText(String(n(r.price).toFixed(2)),360,y); ctx.fillText(String((n(r.qty)*n(r.price)).toFixed(2)),190,y); y+=58;});
-    y+=26; ctx.font='24px Arial'; ctx.fillText('قبل الخصم: '+money(inv.subTotal||inv.total),940,y); y+=38; ctx.fillText('الخصم: '+money(inv.discountAmount||0),940,y); y+=38; ctx.font='bold 30px Arial'; ctx.fillText('الإجمالي: '+money(inv.total),940,y); y+=44; ctx.font='24px Arial'; ctx.fillText('المدفوع: '+money(inv.paid)+' — الدين: '+money(inv.debt),940,y); y+=64; ctx.textAlign='center'; ctx.fillStyle='#64748b'; ctx.fillText('شكراً لزيارتكم',500,y);
+    ctx.fillStyle='#111827'; ctx.textAlign='right'; ctx.font='bold 28px Arial'; ctx.fillText(inv.number||'',940,188); ctx.font='23px Arial'; ctx.fillText(new Date(inv.date).toLocaleString('ar'),940,224);
+    let y=300;
+    ctx.font='bold 23px Arial'; ctx.fillStyle='#e5e7eb'; ctx.fillRect(55,y-36,890,46); ctx.fillStyle='#111827';
+    ctx.fillText('الاسم',930,y); ctx.fillText('السعر',545,y); ctx.fillText('الكمية',360,y); ctx.fillText('الإجمالي',190,y); y+=52;
+    ctx.font='21px Arial';
+    rows.forEach(r=>{
+      ctx.fillStyle='#111827';
+      ctx.fillText(String(lineDisplayName(r)||''),930,y);
+      ctx.fillText(String(n(r.price).toFixed(2)),545,y);
+      ctx.fillText(String(r.qty||''),360,y);
+      ctx.fillText(String(lineSaleTotal(r).toFixed(2)),190,y);
+      y+=58;
+    });
+    y+=22;
+    ctx.font='24px Arial'; ctx.fillStyle='#111827';
+    ctx.fillText('قبل الخصم: '+money(inv.subTotal||inv.total),940,y); y+=38;
+    ctx.fillText('الخصم: '+money(inv.discountAmount||0),940,y); y+=48;
+    ctx.strokeStyle='#111827'; ctx.lineWidth=2; roundRect(ctx,520,y-36,420,54,10); ctx.stroke();
+    ctx.font='bold 27px Arial'; ctx.fillText('مبلغ إجمالي المبيعات: '+money(inv.total),920,y); y+=72;
+    ctx.textAlign='center'; ctx.fillStyle='#64748b'; ctx.font='24px Arial'; ctx.fillText('شكراً لزيارتكم',500,y);
     return canvas;
   }
   function downloadInvoiceImage(id){ const inv=coll('invoices').find(x=>x.id===id); if(!inv)return; const canvas=buildInvoiceCanvas(inv); const a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download=(inv.number||'invoice')+'.png'; a.click(); toast('تم تنزيل صورة الفاتورة'); }
